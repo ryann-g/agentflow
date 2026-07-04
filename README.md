@@ -175,3 +175,5 @@ Contact us to discuss terms:
 We typically respond within 1–2 business days.
 
 Copyright © 2026 AgentFlow. All rights reserved.
+
+<!-- test: activity widget debug -->
