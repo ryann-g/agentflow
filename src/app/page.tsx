@@ -31,6 +31,9 @@ export const metadata: Metadata = {
   title: "AgentFlow — The CRM for agents who hate CRMs",
   description:
     "Dead-simple contact management and follow-up for solo real estate agents. No bloat. No learning curve. Just who to call today.",
+  alternates: {
+    canonical: "https://agent-flow.app",
+  },
 };
 
 export default function LandingPage() {

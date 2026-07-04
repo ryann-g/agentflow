@@ -5,6 +5,9 @@ import { ArrowLeft, Mail, Globe, MessageSquare } from "lucide-react";
 export const metadata: Metadata = {
   title: "Contact Us — AgentFlow",
   description: "Get in touch with the AgentFlow team. We're here to help.",
+  alternates: {
+    canonical: "https://agent-flow.app/contact",
+  },
 };
 
 export default function ContactPage() {

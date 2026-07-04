@@ -18,6 +18,9 @@ import { CHANGELOG } from "@/data/changelog";
 
 export const metadata: Metadata = {
   title: "Changelog — AgentFlow",
+  alternates: {
+    canonical: "https://agent-flow.app/changelog",
+  },
   description:
     "Every release, improvement, and bug fix shipped to AgentFlow. Updated whenever we deploy.",
 };

@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Terms of Service — AgentFlow",
   description:
     "AgentFlow terms of service. The ground rules for using our CRM platform.",
+  alternates: {
+    canonical: "https://agent-flow.app/terms",
+  },
 };
 
 export default function TermsPage() {

@@ -5,6 +5,9 @@ import { ArrowLeft } from "lucide-react";
 export const metadata: Metadata = {
   title: "Privacy Policy — AgentFlow",
   description: "AgentFlow privacy policy. Learn how we collect, use, and protect your data.",
+  alternates: {
+    canonical: "https://agent-flow.app/privacy",
+  },
 };
 
 export default function PrivacyPage() {
