@@ -95,8 +95,8 @@ export function Sidebar() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all min-h-touch relative",
                 isActive
-                  ? "bg-primary-50 text-primary border-l-2 border-primary ml-0 pl-[10px]"
-                  : "text-surface-600 hover:bg-surface-50 hover:text-surface-900 border-l-2 border-transparent ml-0 pl-[10px]"
+                  ? "bg-surface-100 text-surface-900"
+                  : "text-surface-600 hover:bg-surface-50 hover:text-surface-900"
               )}
             >
               <item.icon className="h-5 w-5 shrink-0" />
