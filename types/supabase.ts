@@ -147,10 +147,14 @@ export type Database = {
           created_at: string
           email: string
           full_name: string
+          grace_period_ends_at: string | null
           id: string
+          paymongo_customer_id: string | null
+          paymongo_subscription_id: string | null
           plan: string
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          subscription_interval: string | null
           subscription_status: string | null
           updated_at: string
         }
@@ -159,10 +163,14 @@ export type Database = {
           created_at?: string
           email: string
           full_name: string
+          grace_period_ends_at?: string | null
           id: string
+          paymongo_customer_id?: string | null
+          paymongo_subscription_id?: string | null
           plan?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_interval?: string | null
           subscription_status?: string | null
           updated_at?: string
         }
@@ -171,12 +179,46 @@ export type Database = {
           created_at?: string
           email?: string
           full_name?: string
+          grace_period_ends_at?: string | null
           id?: string
+          paymongo_customer_id?: string | null
+          paymongo_subscription_id?: string | null
           plan?: string
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          subscription_interval?: string | null
           subscription_status?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      webhook_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          paymongo_event_id: string
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          paymongo_event_id: string
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          paymongo_event_id?: string
+          processed_at?: string | null
+          status?: string
         }
         Relationships: []
       }
