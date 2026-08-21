@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useDismiss } from "@/hooks/use-dismiss";
 import {
   Phone,
   Mail,
@@ -66,6 +67,9 @@ function LeadCard({
 }) {
   const [showStageMenu, setShowStageMenu] = useState(false);
   const [activePopup, setActivePopup] = useState<"email" | "call" | "text" | null>(null);
+  const stageMenuRef = useRef<HTMLDivElement>(null);
+
+  useDismiss(stageMenuRef, () => setShowStageMenu(false), showStageMenu);
   const callButtonRef = useRef<HTMLButtonElement>(null);
   const emailButtonRef = useRef<HTMLButtonElement>(null);
   const textButtonRef = useRef<HTMLButtonElement>(null);
@@ -98,9 +102,11 @@ function LeadCard({
               {lead.full_name}
             </Link>
           </div>
-          <div className="relative">
+          <div ref={stageMenuRef} className="relative">
             <button
               onClick={() => setShowStageMenu(!showStageMenu)}
+              aria-haspopup="menu"
+              aria-expanded={showStageMenu}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs font-medium bg-surface-100 hover:bg-surface-200 transition-colors"
             >
               {STAGES.find((s) => s.key === lead.pipeline_stage)?.label || lead.pipeline_stage}
@@ -136,7 +142,7 @@ function LeadCard({
 
         {/* Date + Action Buttons */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-xs text-surface-400">
+          <div className="flex items-center gap-1 text-xs text-surface-500">
             <Clock className="h-3 w-3" />
             {lead.next_action_date ? (
               <span className={isOverdue ? "text-red-500 font-medium" : ""}>
@@ -154,7 +160,7 @@ function LeadCard({
                 ref={callButtonRef}
                 type="button"
                 onClick={() => setActivePopup(activePopup === "call" ? null : "call")}
-                className="p-1.5 rounded-lg text-surface-400 hover:text-green-600 hover:bg-green-50 transition-colors"
+                className="p-1.5 rounded-lg text-surface-500 hover:text-green-600 hover:bg-green-50 transition-colors"
                 title="Call"
               >
                 <Phone className="h-3.5 w-3.5" />
@@ -165,7 +171,7 @@ function LeadCard({
                 ref={emailButtonRef}
                 type="button"
                 onClick={() => setActivePopup(activePopup === "email" ? null : "email")}
-                className="p-1.5 rounded-lg text-surface-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                className="p-1.5 rounded-lg text-surface-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
                 title="Email"
               >
                 <Mail className="h-3.5 w-3.5" />
@@ -176,7 +182,7 @@ function LeadCard({
                 ref={textButtonRef}
                 type="button"
                 onClick={() => setActivePopup(activePopup === "text" ? null : "text")}
-                className="p-1.5 rounded-lg text-surface-400 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+                className="p-1.5 rounded-lg text-surface-500 hover:text-purple-600 hover:bg-purple-50 transition-colors"
                 title="Text"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
@@ -253,7 +259,7 @@ export function PipelineBoard({
             {!isCollapsed && (
               <div className="p-3 bg-white">
                 {stageLeads.length === 0 ? (
-                  <p className="text-xs text-surface-400 text-center py-4">
+                  <p className="text-xs text-surface-500 text-center py-4">
                     No leads in this stage
                   </p>
                 ) : (

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { bulkDeleteLeads, bulkUpdateLeads } from "@/hooks/useLeads";
+import { useDismiss } from "@/hooks/use-dismiss";
 import { showToast } from "@/components/ui/toast";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -110,6 +111,9 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  useDismiss(sortMenuRef, () => setShowSortMenu(false), showSortMenu);
 
   const filteredLeads = useMemo(() => {
     let result = leads;
@@ -285,14 +289,16 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
             className="input-field pl-10"
           />
         </div>
-        <div className="relative">
+        <div ref={sortMenuRef} className="relative">
           <button
             onClick={() => setShowSortMenu(!showSortMenu)}
+            aria-haspopup="menu"
+            aria-expanded={showSortMenu}
             className="flex items-center gap-2 px-3 py-2 rounded-lg border border-surface-200 bg-surface text-sm text-surface-700 hover:bg-surface-50 transition-colors w-full sm:w-auto"
           >
             <ArrowUpDown className="h-4 w-4" />
             {SORT_OPTIONS.find((o) => o.key === sort)?.label}
-            <ChevronDown className="h-3.5 w-3.5 text-surface-400" />
+            <ChevronDown className="h-3.5 w-3.5 text-surface-500" />
           </button>
           {showSortMenu && (
             <div className="absolute right-0 top-full mt-1 bg-surface border border-surface-200 rounded-lg shadow-lg z-10 py-1 w-44">
@@ -416,6 +422,10 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                 <div className="flex items-center gap-3">
                   {/* Checkbox */}
                   <button
+                    type="button"
+                    role="checkbox"
+                    aria-checked={selected.has(lead.id)}
+                    aria-label={`Select ${lead.full_name}`}
                     onClick={() => toggleSelect(lead.id)}
                     className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                       selected.has(lead.id)
@@ -424,7 +434,7 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                     }`}
                   >
                     {selected.has(lead.id) && (
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -460,7 +470,7 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                     <div className="flex items-center gap-3 text-xs text-surface-500">
                       {lead.email && <span className="truncate max-w-[160px]">{lead.email}</span>}
                       {lead.phone && <span>{lead.phone}</span>}
-                      <span className="text-surface-400">{lead.source.replace("_", " ")}</span>
+                      <span className="text-surface-500">{lead.source.replace("_", " ")}</span>
                     </div>
                     {/* Pipeline Progress */}
                     <div className="mt-2 flex items-center gap-2">
@@ -470,7 +480,7 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                           style={{ width: `${getStageProgress(lead.pipeline_stage)}%` }}
                         />
                       </div>
-                      <span className="text-[10px] text-surface-400">
+                      <span className="text-[10px] text-surface-500">
                         {Math.round(getStageProgress(lead.pipeline_stage))}%
                       </span>
                     </div>
@@ -527,6 +537,10 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
+                      role="checkbox"
+                      aria-checked={selected.has(lead.id)}
+                      aria-label={`Select ${lead.full_name}`}
                       onClick={() => toggleSelect(lead.id)}
                       className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                         selected.has(lead.id)
@@ -535,7 +549,7 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                       }`}
                     >
                       {selected.has(lead.id) && (
-                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                         </svg>
                       )}
@@ -572,13 +586,13 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                       style={{ width: `${getStageProgress(lead.pipeline_stage)}%` }}
                     />
                   </div>
-                  <span className="text-[10px] text-surface-400">
+                  <span className="text-[10px] text-surface-500">
                     {Math.round(getStageProgress(lead.pipeline_stage))}%
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-surface-400">
+                  <span className="text-[10px] text-surface-500">
                     {lead.source.replace("_", " ")}
                   </span>
                   <div className="flex items-center gap-1">
@@ -586,7 +600,7 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                       <a
                         href={`tel:${lead.phone}`}
                         aria-label="Call"
-                        className="p-1.5 rounded hover:bg-surface-100 text-surface-400 hover:text-primary transition-colors"
+                        className="p-1.5 rounded hover:bg-surface-100 text-surface-500 hover:text-primary transition-colors"
                       >
                         <Phone className="h-3.5 w-3.5" />
                       </a>
@@ -595,7 +609,7 @@ export function LeadsClient({ initialLeads }: { initialLeads: Lead[] }) {
                       <a
                         href={`mailto:${lead.email}`}
                         aria-label="Email"
-                        className="p-1.5 rounded hover:bg-surface-100 text-surface-400 hover:text-primary transition-colors"
+                        className="p-1.5 rounded hover:bg-surface-100 text-surface-500 hover:text-primary transition-colors"
                       >
                         <Mail className="h-3.5 w-3.5" />
                       </a>
