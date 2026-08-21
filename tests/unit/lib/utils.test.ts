@@ -119,3 +119,38 @@ describe("getStageVariant()", () => {
     expect(getStageVariant("unknown_stage")).toBe("default");
   });
 });
+
+// ── getLeadScore (shared leads/pipeline scoring) ──────────────
+
+import { getLeadScore } from "@/lib/utils";
+
+describe("getLeadScore", () => {
+  const makeLead = (stage: string, updatedDaysAgo: number) => ({
+    pipeline_stage: stage,
+    updated_at: new Date(Date.now() - updatedDaysAgo * 86_400_000).toISOString(),
+  });
+
+  it("scores showing-or-later stages as hot regardless of recency", () => {
+    expect(getLeadScore(makeLead("showing", 90))).toBe("hot");
+    expect(getLeadScore(makeLead("offer", 400))).toBe("hot");
+    expect(getLeadScore(makeLead("closed_won", 400))).toBe("hot");
+  });
+
+  it("scores recently-updated new leads as hot", () => {
+    expect(getLeadScore(makeLead("new_lead", 1))).toBe("hot");
+  });
+
+  it("scores contacted stage or week-fresh leads as warm", () => {
+    expect(getLeadScore(makeLead("contacted", 30))).toBe("warm");
+    expect(getLeadScore(makeLead("new_lead", 5))).toBe("warm");
+  });
+
+  it("scores stale cold-pipeline leads as cold", () => {
+    expect(getLeadScore(makeLead("new_lead", 30))).toBe("cold");
+  });
+
+  it("treats closed_lost as non-advanced (score driven by recency)", () => {
+    expect(getLeadScore(makeLead("closed_lost", 400))).toBe("cold");
+    expect(getLeadScore(makeLead("closed_lost", 2))).toBe("hot");
+  });
+});
