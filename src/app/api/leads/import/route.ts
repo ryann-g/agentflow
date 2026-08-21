@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { apiRateLimit } from "@/lib/rate-limiter";
 import { PLAN_LIMITS, type PlanType } from "@/lib/constants";
 import Papa from "papaparse";
+import {
+  sanitizeCsvValue,
+  isBinaryContent,
+} from "@/lib/csv-sanitize";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const BATCH_SIZE = 1000;
@@ -84,8 +88,7 @@ export async function POST(request: NextRequest) {
     const text = await file.text();
 
     // Binary content detection
-    const nullCount = (text.match(/\0/g) || []).length;
-    if (nullCount > 0) {
+    if (isBinaryContent(text)) {
       return NextResponse.json(
         { error: "File appears to be binary, not a CSV. Please upload a valid CSV file." },
         { status: 400 }
@@ -112,7 +115,7 @@ export async function POST(request: NextRequest) {
     }
 
     leads = parsed.data.map((row) => ({
-      full_name: Object.values(row)[0] || "",
+      full_name: sanitizeCsvValue(Object.values(row)[0] || ""),
       email: null,
       phone: null,
       source: "csv_import",
@@ -120,6 +123,8 @@ export async function POST(request: NextRequest) {
   }
 
   // --- Validate each row ---
+  // Sanitization happens HERE on the server (not only in the browser) so a
+  // direct POST with crafted JSON cannot store spreadsheet-formula payloads.
   const errors: string[] = [];
   const validLeads = leads
     .map((lead, index) => {
@@ -132,17 +137,20 @@ export async function POST(request: NextRequest) {
         errors.push(`Row ${index + 1}: name exceeds 100 characters — skipped`);
         return null;
       }
-      if (lead.email && lead.email.length > 255) {
+      const email = lead.email ? lead.email.trim() : "";
+      const phone = lead.phone ? lead.phone.trim() : "";
+
+      if (email.length > 255) {
         errors.push(`Row ${index + 1}: email exceeds 255 characters — truncated`);
       }
-      if (lead.phone && lead.phone.length > 20) {
+      if (phone.length > 20) {
         errors.push(`Row ${index + 1}: phone exceeds 20 characters — truncated`);
       }
       return {
         user_id: user.id,
-        full_name: name.slice(0, 100),
-        email: lead.email ? lead.email.slice(0, 255) : null,
-        phone: lead.phone ? lead.phone.slice(0, 20) : null,
+        full_name: sanitizeCsvValue(name).slice(0, 101),
+        email: email ? sanitizeCsvValue(email).slice(0, 256) : null,
+        phone: phone ? sanitizeCsvValue(phone).slice(0, 21) : null,
         source: "csv_import",
         pipeline_stage: "new_lead",
       };

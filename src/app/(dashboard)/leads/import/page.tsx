@@ -9,6 +9,10 @@ import { checkPlanLimit } from "@/lib/plan-limit";
 import { ArrowLeft, Upload, FileText, Loader2, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import Papa from "papaparse";
+import {
+  sanitizeCsvValue,
+  isBinaryContent,
+} from "@/lib/csv-sanitize";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -17,19 +21,6 @@ interface ParsedLead {
   email: string | null;
   phone: string | null;
   source: string;
-}
-
-function sanitizeCSVValue(value: string): string {
-  if (!value) return value;
-  if (/^[=+\-@\t\r]/.test(value)) {
-    return "'" + value;
-  }
-  return value;
-}
-
-function isBinaryContent(text: string): boolean {
-  const nullCount = (text.match(/\0/g) || []).length;
-  return nullCount > 0 || text.length > 0 && nullCount / text.length > 0.01;
 }
 
 export default function ImportPage() {
@@ -135,9 +126,9 @@ export default function ImportPage() {
                   : row[lastNameCol] || "";
               }
               return {
-                full_name: sanitizeCSVValue(fullName),
-                email: emailCol ? sanitizeCSVValue(row[emailCol] || "") || null : null,
-                phone: phoneCol ? sanitizeCSVValue(row[phoneCol] || "") || null : null,
+                full_name: sanitizeCsvValue(fullName),
+                email: emailCol ? sanitizeCsvValue(row[emailCol] || "") || null : null,
+                phone: phoneCol ? sanitizeCsvValue(row[phoneCol] || "") || null : null,
                 source: "csv_import",
               };
             })
