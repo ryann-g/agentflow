@@ -290,7 +290,7 @@ export default function ImportPage() {
             <p className="text-sm text-surface-500">
               Or drag and drop your file here
             </p>
-            <p className="text-xs text-surface-400 mt-2">
+            <p className="text-xs text-surface-500 mt-2">
               Max {MAX_FILE_SIZE / 1024 / 1024}MB
             </p>
           </div>

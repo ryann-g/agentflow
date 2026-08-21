@@ -128,7 +128,7 @@ export function Sidebar() {
         >
           <Calendar className="h-5 w-5 shrink-0" />
           <span className="flex-1">Google Calendar</span>
-          <ExternalLink className="h-3.5 w-3.5 text-surface-400" />
+          <ExternalLink className="h-3.5 w-3.5 text-surface-500" />
         </a>
       </div>
 

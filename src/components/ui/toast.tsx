@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { X, CheckCircle, AlertCircle, Info } from "lucide-react";
 import Link from "next/link";
 
@@ -36,21 +36,37 @@ export function showToast(
 
 export function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  // Auto-dismiss timers keyed by toast id so manual dismissal and unmount
+  // can cancel them — prevents setState-after-unmount warnings and stray
+  // removal of a re-shown toast.
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
 
   useEffect(() => {
+    const timers = timersRef.current;
     const listener = (toast: Toast) => {
       setToasts((prev) => [...prev, toast]);
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
+        timers.delete(toast.id);
         setToasts((prev) => prev.filter((t) => t.id !== toast.id));
       }, 5000);
+      timers.set(toast.id, timerId);
     };
     toastListeners.push(listener);
     return () => {
       toastListeners = toastListeners.filter((l) => l !== listener);
+      timers.forEach(clearTimeout);
+      timers.clear();
     };
   }, []);
 
   const removeToast = (id: string) => {
+    const timerId = timersRef.current.get(id);
+    if (timerId !== undefined) {
+      clearTimeout(timerId);
+      timersRef.current.delete(id);
+    }
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 

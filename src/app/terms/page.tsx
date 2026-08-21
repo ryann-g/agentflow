@@ -71,7 +71,7 @@ export default function TermsPage() {
                         href={`#${s.id}`}
                         className="group flex items-baseline gap-2 py-1 text-sm text-surface-500 hover:text-primary transition-colors"
                       >
-                        <span className="font-mono text-xs text-surface-400 group-hover:text-primary tabular-nums w-4 shrink-0">
+                        <span className="font-mono text-xs text-surface-500 group-hover:text-primary tabular-nums w-4 shrink-0">
                           {s.num}.
                         </span>
                         <span className="leading-snug">{s.title}</span>
@@ -109,7 +109,7 @@ export default function TermsPage() {
                         href={`#${s.id}`}
                         className="flex items-baseline gap-2 py-1 text-sm text-surface-500 hover:text-primary transition-colors"
                       >
-                        <span className="font-mono text-xs text-surface-400 tabular-nums w-4 shrink-0">
+                        <span className="font-mono text-xs text-surface-500 tabular-nums w-4 shrink-0">
                           {s.num}.
                         </span>
                         <span>{s.title}</span>

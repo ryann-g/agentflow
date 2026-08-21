@@ -62,20 +62,20 @@ function EmailComposer({
           <span className="text-xs font-semibold text-surface-700">New Message</span>
         </div>
         <button onClick={onClose} className="p-1 rounded hover:bg-surface-200 transition-colors">
-          <X className="h-3.5 w-3.5 text-surface-400" />
+          <X className="h-3.5 w-3.5 text-surface-500" />
         </button>
       </div>
 
       {/* Fields */}
       <div className="px-4 py-2 border-b border-surface-100">
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-surface-400 w-12">To</span>
+          <span className="text-surface-500 w-12">To</span>
           <span className="text-surface-700 font-medium">{leadEmail || `${leadName.toLowerCase().replace(" ", ".")}@email.com`}</span>
         </div>
       </div>
       <div className="px-4 py-2 border-b border-surface-100">
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-surface-400 w-12">Subject</span>
+          <span className="text-surface-500 w-12">Subject</span>
           <span className="text-surface-700">Following up on the property</span>
         </div>
       </div>
@@ -90,7 +90,7 @@ function EmailComposer({
 
       {/* Footer */}
       <div className="px-4 py-2.5 bg-surface-50 border-t border-surface-200 flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs text-surface-400">
+        <div className="flex items-center gap-1 text-xs text-surface-500">
           <Send className="h-3 w-3" />
           <span>agentflow.app</span>
         </div>
@@ -192,7 +192,7 @@ function TextMessage({
           <span className="text-xs font-semibold text-surface-700">{leadName}</span>
         </div>
         <button onClick={onClose} className="p-1 rounded hover:bg-surface-200 transition-colors">
-          <X className="h-3.5 w-3.5 text-surface-400" />
+          <X className="h-3.5 w-3.5 text-surface-500" />
         </button>
       </div>
 
@@ -220,7 +220,7 @@ function TextMessage({
 
       {/* Input */}
       <div className="px-3 py-2 border-t border-surface-100 flex items-center gap-2">
-        <div className="flex-1 bg-surface-50 rounded-full px-3 py-1.5 text-xs text-surface-400">
+        <div className="flex-1 bg-surface-50 rounded-full px-3 py-1.5 text-xs text-surface-500">
           Type a message...
         </div>
         <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center">

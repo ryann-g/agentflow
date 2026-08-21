@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { leadUpdateSchema } from "@/lib/validations";
+import { apiRateLimit } from "@/lib/rate-limiter";
 import { PLAN_LIMITS, type PlanType } from "@/lib/constants";
 
 export async function GET(
@@ -15,6 +16,10 @@ export async function GET(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await apiRateLimit(`leads:get-one:${user.id}`, 100, 60)).allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const { data, error } = await supabase
@@ -44,6 +49,10 @@ export async function PUT(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await apiRateLimit(`leads:update:${user.id}`, 30, 60)).allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const body = await request.json();
@@ -138,6 +147,10 @@ export async function DELETE(
 
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!(await apiRateLimit(`leads:delete:${user.id}`, 30, 60)).allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
   const { error } = await supabase

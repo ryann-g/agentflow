@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { isAuthorizedCronRequest } from "@/lib/timing-safe-equal";
 import { handleGracePeriodExpired } from "@/lib/paymongo";
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!isAuthorizedCronRequest(request.headers.get("authorization"))) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

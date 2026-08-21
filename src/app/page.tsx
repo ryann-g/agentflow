@@ -171,7 +171,7 @@ export default function LandingPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded">Referral</span>
                       <div className="w-5 h-5 rounded bg-surface-100 flex items-center justify-center">
-                        <Contact className="h-3 w-3 text-surface-400" />
+                        <Contact className="h-3 w-3 text-surface-500" />
                       </div>
                     </div>
                   </div>

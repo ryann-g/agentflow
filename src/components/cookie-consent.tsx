@@ -104,7 +104,7 @@ export function CookieConsent() {
             type="button"
             onClick={() => dismiss("declined")}
             aria-label="Dismiss cookie consent"
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-button text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 active:scale-[0.97]"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-button text-surface-500 transition-colors hover:bg-surface-100 hover:text-surface-600 active:scale-[0.97]"
           >
             <X className="h-3.5 w-3.5" />
           </button>

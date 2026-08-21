@@ -52,7 +52,7 @@ const StepItem = memo(function StepItem({
           className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors duration-200 ${
             isActive
               ? "bg-primary-50 text-primary"
-              : "bg-surface-50 text-surface-400"
+              : "bg-surface-50 text-surface-500"
           }`}
         >
           {item.icon}
