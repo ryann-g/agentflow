@@ -1,20 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import { StickyHeader } from "@/components/layout/sticky-header";
 import { HowItWorks } from "@/components/landing/how-it-works";
 import { HeroDemo } from "@/components/landing/hero-demo";
 
-// Lazy-load: only needed when Supabase OAuth drops ?code= on root
-// Removes ~165KB Supabase client from the landing page bundle
-const AuthCallbackRescue = dynamic(
-  () =>
-    import("@/components/auth-callback-rescue").then(
-      (mod) => mod.AuthCallbackRescue
-    ),
-  { ssr: false }
-);
+// Lazy-loaded via client wrapper — keeps the ~165KB Supabase client off
+// the landing bundle; only mounts when OAuth drops ?code= on root.
+import AuthCallbackRescueClient from "@/components/auth-callback-rescue-client";
 import { Footer } from "@/components/footer";
 import { LandingPricing } from "@/components/landing-pricing";
 import IntegrationGrid from "@/components/landing/integration-grid";
@@ -39,7 +32,7 @@ export const metadata: Metadata = {
 export default function LandingPage() {
   return (
     <div className="min-h-dvh bg-white">
-      <AuthCallbackRescue />
+      <AuthCallbackRescueClient />
 
       <StickyHeader />
 

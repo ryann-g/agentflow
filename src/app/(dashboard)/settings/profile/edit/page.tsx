@@ -65,7 +65,6 @@ export default function EditProfilePage() {
 
     showToast("Profile updated successfully!", "success");
     router.push("/settings");
-    router.refresh();
   }
 
   if (loading) {

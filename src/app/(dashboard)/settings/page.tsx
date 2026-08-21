@@ -37,7 +37,6 @@ export default function SettingsPage() {
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.push("/login");
-    router.refresh();
   }
 
   if (loading) {

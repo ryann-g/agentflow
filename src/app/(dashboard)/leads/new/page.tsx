@@ -86,7 +86,6 @@ export default function NewLeadPage() {
 
     showToast("Lead created successfully!", "success");
     router.push("/leads");
-    router.refresh();
   }
 
   return (
