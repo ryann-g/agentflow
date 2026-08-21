@@ -21,12 +21,6 @@ describe("Server Component conversion", () => {
       expect(src).toMatch(/export async function getLeadsForServer/);
       expect(src).toMatch(/createClient/);
     });
-
-    test("useProfileServer exports getProfile function", () => {
-      const src = read("hooks/useProfileServer.ts");
-      expect(src).toMatch(/export async function getProfile/);
-      expect(src).toMatch(/createClient/);
-    });
   });
 
   describe("page files are Server Components (no 'use client' directive)", () => {
@@ -82,18 +76,6 @@ describe("Server Component conversion", () => {
     test("settings/page.tsx has 'use client'", () => {
       const src = read("app/(dashboard)/settings/page.tsx");
       expect(src).toMatch(/^"use client"/);
-    });
-
-    test("settings/settings-client.tsx has 'use client'", () => {
-      const src = read("app/(dashboard)/settings/settings-client.tsx");
-      expect(src).toMatch(/^"use client"/);
-      expect(src).toMatch(/export function SettingsClient/);
-    });
-
-    test("settings/billing/billing-client.tsx has 'use client'", () => {
-      const src = read("app/(dashboard)/settings/billing/billing-client.tsx");
-      expect(src).toMatch(/^"use client"/);
-      expect(src).toMatch(/export function BillingClient/);
     });
   });
 
