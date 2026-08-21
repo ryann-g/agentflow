@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = process.env.BASE_URL ?? "http://localhost:3000";
 
 test.describe("Load Test: 5 Concurrent Users", () => {
   test.setTimeout(120000);

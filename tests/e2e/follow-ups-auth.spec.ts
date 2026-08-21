@@ -55,7 +55,8 @@ test.describe("Follow-ups (Authenticated)", () => {
   test("should show follow-up action description", async ({
     authenticatedPage: page,
   }) => {
-    const future = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+    // Upcoming section only lists actions within the next 7 days.
+    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
 
@@ -74,7 +75,8 @@ test.describe("Follow-ups (Authenticated)", () => {
   test("should navigate to lead detail from follow-up", async ({
     authenticatedPage: page,
   }) => {
-    const future = new Date(Date.now() + 21 * 24 * 60 * 60 * 1000)
+    // Upcoming section only lists actions within the next 7 days.
+    const future = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)
       .toISOString()
       .slice(0, 10);
 

@@ -21,7 +21,7 @@ test.describe("Mobile captcha regression (post-1cabcd6 fix)", () => {
         if (msg.type() === "error") consoleErrors.push(msg.text());
       });
 
-      await page.goto("http://localhost:3000/login");
+      await page.goto("/login");
 
       // 1. Page renders
       await expect(page.locator("h1")).toBeVisible({ timeout: 10000 });

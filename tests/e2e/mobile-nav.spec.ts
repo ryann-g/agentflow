@@ -2,6 +2,13 @@ import { test, expect } from "./fixtures/auth";
 
 const bottomNav = "nav.fixed.bottom-0";
 
+async function dismissConsentBanner(page: import("@playwright/test").Page) {
+  const accept = page.getByRole("button", { name: /accept analytics/i });
+  if (await accept.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await accept.click();
+  }
+}
+
 test.describe("Mobile Navigation (Authenticated)", () => {
   test("should display bottom navigation on mobile", async ({
     authenticatedPage: page,
@@ -16,11 +23,12 @@ test.describe("Mobile Navigation (Authenticated)", () => {
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/dashboard");
+    // June 2026 redesign: Leads replaced Follow-ups in the nav.
     const nav = page.locator(bottomNav);
     await expect(nav.getByRole("link", { name: "Today" })).toBeVisible();
+    await expect(nav.getByRole("link", { name: "Leads" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Pipeline" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Add Lead" })).toBeVisible();
-    await expect(nav.getByRole("link", { name: "Follow-ups" })).toBeVisible();
     await expect(nav.getByRole("link", { name: "Settings" })).toBeVisible();
   });
 
@@ -29,6 +37,7 @@ test.describe("Mobile Navigation (Authenticated)", () => {
   }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/dashboard");
+    await dismissConsentBanner(page);
     await page.locator(bottomNav).getByRole("link", { name: "Pipeline" }).click();
     await expect(page).toHaveURL(/\/pipeline/);
   });

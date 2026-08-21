@@ -18,7 +18,7 @@ test.describe("Load Test: 5 Concurrent Users", () => {
 
       // Step 1: Navigate to login
       await page.goto("/login");
-      await expect(page.locator("h1")).toContainText("AgentFlow");
+      await expect(page.locator("h1")).toContainText("Welcome back");
       console.log(`[User ${index + 1}] Login page loaded (${Date.now() - startTime}ms)`);
 
       // Step 2: Login (mock auth - in real test would use Supabase)

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { updateLead } from "@/hooks/useLeads";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -270,9 +271,12 @@ function FollowUpCard({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="font-medium text-sm text-surface-900 truncate">
+            <Link
+              href={`/leads/${lead.id}`}
+              className="font-medium text-sm text-surface-900 hover:text-primary truncate"
+            >
               {lead.full_name}
-            </h3>
+            </Link>
             <Badge variant={getStageVariant(lead.pipeline_stage)}>
               {formatStage(lead.pipeline_stage)}
             </Badge>

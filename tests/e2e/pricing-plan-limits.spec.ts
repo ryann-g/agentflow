@@ -33,7 +33,14 @@ test.describe("Auth Pages", () => {
     await page.goto("/login");
     await page.waitForLoadState("networkidle");
 
-    await expect(page.locator("text=Sign in")).toBeVisible();
+    // Subtitle + toggle both contain "Sign in", so assert on roles/copy
+    // that uniquely identify the rendered auth UI.
+    await expect(
+      page.getByRole("heading", { name: "Welcome back" })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Send magic link" })
+    ).toBeVisible();
     await expect(page.locator("input[type='email']")).toBeVisible();
   });
 

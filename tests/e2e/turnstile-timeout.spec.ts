@@ -16,6 +16,16 @@ import { test, expect } from "@playwright/test";
  * real widget path is exercised.
  */
 test.describe("Turnstile load timeout fallback", () => {
+  test.beforeEach(async ({ page }) => {
+    // Runtime detection: bypass builds short-circuit before any network
+    // call, so blocking challenges.cloudflare.com can never trigger the
+    // failure path under test.
+    await page.goto("/login");
+    const bypassed = await page
+      .locator('[data-testid="turnstile-widget"][data-bypass="true"]')
+      .count();
+    test.skip(bypassed > 0, "Bypass build — requires a real-widget build");
+  });
   test("shows error state after 10s when Turnstile script is blocked", async ({
     page,
   }) => {

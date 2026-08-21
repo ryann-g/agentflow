@@ -9,9 +9,16 @@ import { test, expect } from "@playwright/test";
  */
 test.describe("Cookie consent", () => {
   test.beforeEach(async ({ page }) => {
-    // Clear any stored consent so the banner renders fresh.
+    // Clear any stored consent so the banner renders fresh for THIS test.
+    // Guarded by a session flag: sessionStorage survives page.reload() within
+    // the same tab, so mid-test reloads keep the consent chosen by the test
+    // (that persistence IS what two of these tests assert), while each new
+    // test's fresh context starts clean.
     await page.addInitScript(() => {
-      localStorage.removeItem("agentflow_cookie_consent");
+      if (!sessionStorage.getItem("consent-wiped-this-tab")) {
+        localStorage.removeItem("agentflow_cookie_consent");
+        sessionStorage.setItem("consent-wiped-this-tab", "1");
+      }
     });
   });
 
