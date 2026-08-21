@@ -94,3 +94,11 @@ supabase/.branches/
 /development
 vercel-env-*.env
 *.vercel.env
+
+# Agent skills tooling (local, not part of the app)
+.agents/
+skills-lock.json
+
+# RLS pentest skill context files (contain audit findings, not app code)
+.sb-pentest-context.json
+.sb-pentest-audit.log
