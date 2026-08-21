@@ -25,7 +25,7 @@ import {
   Snowflake,
 } from "lucide-react";
 import Link from "next/link";
-import { formatStage, getStageVariant } from "@/lib/utils";
+import { formatStage, getStageVariant, getLeadScore } from "@/lib/utils";
 import { isFeatureEnabled } from "@/lib/feature-flags";
 import type { Database } from "@/types";
 
@@ -48,19 +48,6 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "stage", label: "Pipeline Stage" },
   { key: "last_activity", label: "Last Activity" },
 ];
-
-function getLeadScore(lead: Lead): "hot" | "warm" | "cold" {
-  const stageOrder = STAGES.find((s) => s.key === lead.pipeline_stage)?.order ?? 0;
-  const daysSinceUpdate = lead.updated_at
-    ? Math.floor(
-        (Date.now() - new Date(lead.updated_at).getTime()) / (1000 * 60 * 60 * 24)
-      )
-    : 999;
-
-  if (stageOrder >= 2 || daysSinceUpdate <= 3) return "hot";
-  if (stageOrder >= 1 || daysSinceUpdate <= 7) return "warm";
-  return "cold";
-}
 
 function getScoreIcon(score: "hot" | "warm" | "cold") {
   switch (score) {

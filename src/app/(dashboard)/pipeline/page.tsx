@@ -1,4 +1,5 @@
 import { getLeadsForServer } from "@/hooks/useLeadsServer";
+import { redirect } from "next/navigation";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import { UserPlus } from "lucide-react";
@@ -10,7 +11,7 @@ export default async function PipelinePage() {
   const { data: leads, error } = await getLeadsForServer();
 
   if (error === "Not authenticated") {
-    return null;
+    redirect("/login");
   }
 
   return (

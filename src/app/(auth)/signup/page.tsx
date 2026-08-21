@@ -10,6 +10,26 @@ import { OAuthButtons } from "@/components/auth/oauth-buttons";
 import { Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+const GENERIC_SIGNUP_ERROR = "Something went wrong. Please try again.";
+
+/**
+ * Maps Supabase OTP errors to user-appropriate copy. Rate-limit messages are
+ * rewritten to set expectations; everything else passes through the real
+ * message (it is already safe, user-facing text from Supabase), with the
+ * generic string as last resort.
+ */
+function humanizeSignupError(error: { message?: string } | null): string {
+  const message = error?.message ?? "";
+  if (!message) return GENERIC_SIGNUP_ERROR;
+  if (/rate limit/i.test(message)) {
+    return "Too many attempts. Please wait a minute and try again.";
+  }
+  if (/invalid.*email/i.test(message)) {
+    return "Please enter a valid email address.";
+  }
+  return message;
+}
+
 export default function SignupPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -38,7 +58,7 @@ export default function SignupPage() {
     });
 
     if (error) {
-      setErrorMessage("Something went wrong. Please try again.");
+      setErrorMessage(humanizeSignupError({ message: error.message }));
     } else {
       setSuccessMessage("Check your email for the login link!");
     }

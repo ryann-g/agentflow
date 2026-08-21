@@ -81,8 +81,10 @@ function BillingContent() {
       const res = await fetch("/api/paymongo/cancel", { method: "POST" });
       const data = await res.json();
       if (data.success) {
+        // The webhook owns the actual plan downgrade at period end. Keep the
+        // Pro badge — flipping it to Free here contradicted the success
+        // message ("remain on Pro until end of billing period").
         setSuccess("Your subscription has been cancelled. You'll remain on Pro until the end of your billing period.");
-        setPlan("free");
         setSubscriptionStatus("cancelled");
       } else {
         setError(data.error || "Failed to cancel subscription. Please try again.");

@@ -554,8 +554,7 @@ function LoginContent() {
                 <div className="relative">
                   <input
                     ref={passwordInputRef}
-                    id="password-input"
-                    type={showPassword ? "text" : "password"}
+                    id="password-input"                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => {
                       setPassword(e.target.value);
@@ -619,6 +618,21 @@ function LoginContent() {
                 Sign in
               </Button>
             </form>
+          )}
+
+          {/* ── Back to magic link ── */}
+          {activeView === "password" && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveView("magic-link");
+                setAuthError("");
+                setPasswordError("");
+              }}
+              className="w-full text-center text-[14px] text-primary font-medium hover:underline cursor-pointer mt-5"
+            >
+              Use magic link instead
+            </button>
           )}
 
           {/* ── Forgot password form ── */}

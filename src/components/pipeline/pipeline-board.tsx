@@ -16,6 +16,7 @@ import {
   Snowflake,
 } from "lucide-react";
 import Link from "next/link";
+import { getLeadScore } from "@/lib/utils";
 import type { Database } from "@/types";
 import { ActionPopup } from "@/components/action-popup";
 
@@ -36,18 +37,6 @@ interface PipelineBoardProps {
   leads: Lead[];
   updating: string | null;
   onStageChange: (leadId: string, newStage: string) => void;
-}
-
-function getLeadScore(lead: Lead): "hot" | "warm" | "cold" {
-  const stageOrder = ["new_lead", "contacted", "showing", "offer", "closed_won", "closed_lost"];
-  const stageIndex = stageOrder.indexOf(lead.pipeline_stage);
-  const daysSinceCreated = Math.floor(
-    (Date.now() - new Date(lead.created_at).getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  if (stageIndex >= 3 || daysSinceCreated > 30) return "hot";
-  if (stageIndex >= 1 || daysSinceCreated > 7) return "warm";
-  return "cold";
 }
 
 function ScoreIcon({ score }: { score: "hot" | "warm" | "cold" }) {

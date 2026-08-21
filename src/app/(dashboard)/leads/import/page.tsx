@@ -25,6 +25,7 @@ interface ParsedLead {
 
 export default function ImportPage() {
   const [file, setFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [parsedLeads, setParsedLeads] = useState<ParsedLead[]>([]);
   const [columnMapping, setColumnMapping] = useState({
     name: "",
@@ -39,16 +40,15 @@ export default function ImportPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+  function processFile(file: File): void {
+    setErrors([]);
+    setFile(file);
 
-    if (selectedFile.size > MAX_FILE_SIZE) {
+    if (file.size > MAX_FILE_SIZE) {
       setErrors([`File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`]);
       return;
     }
 
-    setFile(selectedFile);
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
@@ -140,7 +140,29 @@ export default function ImportPage() {
         },
       });
     };
-    reader.readAsText(selectedFile);
+    reader.readAsText(file);
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) processFile(selectedFile);
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLDivElement>): void {
+    e.preventDefault();
+    setIsDragging(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLDivElement>): void {
+    e.preventDefault();
+    setIsDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLDivElement>): void {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
   }
 
   async function handleImport() {
@@ -245,8 +267,21 @@ export default function ImportPage() {
       {step === "upload" && (
         <Card>
           <div
-            className="border-2 border-dashed border-surface-200 rounded-lg p-8 text-center cursor-pointer hover:border-primary hover:bg-primary-50 transition-colors"
+            role="button"
+            tabIndex={0}
+            aria-label="Upload CSV file"
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+              isDragging
+                ? "border-primary bg-primary-50"
+                : "border-surface-200 hover:border-primary hover:bg-primary-50"
+            }`}
             onClick={() => fileRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") fileRef.current?.click();
+            }}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
           >
             <Upload className="h-10 w-10 text-surface-500 mx-auto mb-3" />
             <p className="text-surface-700 font-medium mb-1">
