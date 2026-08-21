@@ -11,9 +11,10 @@ import { DeleteLeadButton } from "./lead-detail-client";
 export default async function LeadDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const { lead, actions, error } = await getLead(params.id);
+  const { id } = await params;
+  const { lead, actions, error } = await getLead(id);
 
   if (error || !lead) {
     notFound();

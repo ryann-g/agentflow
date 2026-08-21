@@ -122,7 +122,6 @@ export default function EditLeadPage() {
 
     showToast("Lead updated successfully!", "success");
     router.push(`/leads/${params.id}`);
-    router.refresh();
   }
 
   if (loading) {

@@ -34,7 +34,6 @@ export function DeleteLeadButton({ leadId }: { leadId: string }) {
 
     showToast("Lead deleted successfully!", "success");
     router.push("/leads");
-    router.refresh();
   }
 
   return (
