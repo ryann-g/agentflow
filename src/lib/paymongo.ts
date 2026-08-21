@@ -524,10 +524,86 @@ export async function handleGracePeriodExpired(): Promise<number> {
 }
 
 // ── Webhook Signature Verification ─────────────────────────────────────
+//
+// Spec (docs.paymongo.com → Webhook Setup & Management):
+//   Header format:  t=<unix-ts>,te=<test-mode-hex>,li=<live-mode-hex>
+//                   (the mode not in use is sent empty, e.g. `li=`)
+//   Signed payload: `${t}.${rawBody}` — timestamp, period, raw JSON body
+//   Digest:         HMAC-SHA256 keyed with the endpoint's signing secret
+//
+// The raw body must be verified byte-for-byte BEFORE any JSON parsing,
+// which the webhook route guarantees by calling request.text() first.
 
+/** Replay window: deliveries older than this are rejected. */
+export const WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 300;
+
+interface PayMongoSignatureHeader {
+  timestamp: number;
+  testSignature: string | null;
+  liveSignature: string | null;
+}
+
+/**
+ * Parses the compound Paymongo-Signature header into its parts.
+ * Returns null for malformed headers (missing/non-numeric timestamp).
+ */
+export function parseWebhookSignatureHeader(
+  header: string
+): PayMongoSignatureHeader | null {
+  if (!header) return null;
+
+  const parts = new Map<string, string>();
+  for (const piece of header.split(",")) {
+    const separatorIndex = piece.indexOf("=");
+    if (separatorIndex <= 0) return null;
+    const key = piece.slice(0, separatorIndex).trim();
+    const value = piece.slice(separatorIndex + 1).trim();
+    parts.set(key, value);
+  }
+
+  const rawTimestamp = parts.get("t");
+  if (!rawTimestamp) return null;
+
+  const timestamp = Number.parseInt(rawTimestamp, 10);
+  if (!Number.isFinite(timestamp)) return null;
+
+  return {
+    timestamp,
+    testSignature: parts.get("te") || null,
+    liveSignature: parts.get("li") || null,
+  };
+}
+
+function timingSafeHexEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+  } catch {
+    return false;
+  }
+}
+
+export interface WebhookVerificationOptions {
+  /** Replay window in seconds. Defaults to WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS. */
+  toleranceSeconds?: number;
+  /** Current unix time in seconds — injectable for deterministic tests. */
+  nowSeconds?: number;
+}
+
+/**
+ * Verifies a PayMongo webhook delivery against the compound signature spec.
+ *
+ * Accepts the delivery when EITHER provided mode signature (te or li) matches
+ * the HMAC of `<timestamp>.<body>` — callers don't need to know which mode
+ * their signing secret belongs to.
+ *
+ * Throws PayMongoError(configuration_error) only when the env secret is
+ * missing; all signature mismatches are plain `false`.
+ */
 export function verifyWebhookSignature(
   body: string,
-  signature: string,
+  signatureHeader: string,
+  options: WebhookVerificationOptions = {}
 ): boolean {
   const webhookSecret = process.env.PAYMONGO_WEBHOOK_SECRET;
   if (!webhookSecret) {
@@ -538,19 +614,26 @@ export function verifyWebhookSignature(
     );
   }
 
-  const expectedSignature = crypto
+  const parsed = parseWebhookSignatureHeader(signatureHeader);
+  if (!parsed) return false;
+
+  const tolerance =
+    options.toleranceSeconds ?? WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS;
+  const nowSeconds =
+    options.nowSeconds ?? Math.floor(Date.now() / 1000);
+  if (Math.abs(nowSeconds - parsed.timestamp) > tolerance) return false;
+
+  const expected = crypto
     .createHmac("sha256", webhookSecret)
-    .update(body)
+    .update(`${parsed.timestamp}.${body}`)
     .digest("hex");
 
-  // Timing-safe comparison to prevent timing attacks
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, "utf8"),
-      Buffer.from(expectedSignature, "utf8"),
-    );
-  } catch {
-    // Length mismatch — signatures don't match
-    return false;
-  }
+  const candidates = [parsed.testSignature, parsed.liveSignature].filter(
+    (sig): sig is string => sig !== null && sig !== ""
+  );
+  if (candidates.length === 0) return false;
+
+  return candidates.some((candidate) =>
+    timingSafeHexEqual(candidate.toLowerCase(), expected)
+  );
 }
