@@ -70,7 +70,11 @@ export async function updateSession(request: NextRequest) {
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("redirect", request.nextUrl.pathname);
-      return NextResponse.redirect(url);
+      // GHSA-3g8h-86w9-wvmq interim mitigation: never let any intermediary
+      // cache an auth-gate redirect (cache-poisoning class, fixed in Next 16).
+      const res = NextResponse.redirect(url);
+      res.headers.set("Cache-Control", "no-store, max-age=0");
+      return res;
     }
 
     // Redirect logged-in users away from auth pages
@@ -82,7 +86,9 @@ export async function updateSession(request: NextRequest) {
     if (isAuth && user) {
       const url = request.nextUrl.clone();
       url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
+      const res = NextResponse.redirect(url);
+      res.headers.set("Cache-Control", "no-store, max-age=0");
+      return res;
     }
   } catch (error) {
     console.error("Middleware auth error:", error instanceof Error ? error.message : "Unknown error");
