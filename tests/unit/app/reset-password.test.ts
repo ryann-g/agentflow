@@ -52,8 +52,11 @@ describe("/reset-password page (source assertions)", () => {
   });
 
   it("requires the password fields (no empty submission)", () => {
-    expect(source).toMatch(/type="password"/);
+    // Same show/hide toggle pattern as the login page — inputs render as
+    // type="password" by default via the shared state expression.
+    expect(source).toMatch(/type=\{showPassword \? "text" : "password"\}/);
     expect(source).toContain("required");
+    expect(source).toContain('autoComplete="new-password"');
   });
 
   it("shows an error state with a way back to /login when there is no valid session", () => {
@@ -66,8 +69,11 @@ describe("/reset-password page (source assertions)", () => {
     expect(source).toMatch(/href="\/login"/);
   });
 
-  it("routes unauthenticated visitors to the login page via router.push", () => {
-    expect(source).toMatch(/router\.push\(["'`]\/login/);
+  it("sends the now-authenticated user into the app after a successful update", () => {
+    // After updateUser() the session is live — dashboard is the correct
+    // destination. Unauthenticated paths are covered by the /login Link
+    // assertions above.
+    expect(source).toMatch(/router\.push\(["'`]\/dashboard/);
   });
 });
 
