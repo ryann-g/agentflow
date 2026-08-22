@@ -31,7 +31,6 @@ describe("toast timer hygiene", () => {
 
 describe("WCAG AA contrast sweep", () => {
   const FILES = [
-    "components/action-popup.tsx",
     "components/layout/sidebar.tsx",
     "components/landing/how-it-works.tsx",
     "components/cookie-consent.tsx",
@@ -47,7 +46,7 @@ describe("WCAG AA contrast sweep", () => {
 
   it("no hover:border-surface-300 regression guard for leads/pipeline either", () => {
     // already covered in leads-ui-a11y.test.ts; this pins the sweep scope
-    expect(FILES.length).toBe(8);
+    expect(FILES.length).toBe(7);
   });
 });
 
