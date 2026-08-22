@@ -241,3 +241,96 @@ describe("verifyWebhookSignature", () => {
     }
   });
 });
+
+// ── Subscription lifecycle routing (official event catalog) ──────────
+
+const updateCalls: Array<Record<string, unknown>> = [];
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: () => ({
+    from: () => ({
+      select: () => ({
+        eq: () => ({
+          single: async () => ({
+            data: { id: "profile_1", subscription_status: "past_due" },
+            error: null,
+          }),
+        }),
+      }),
+      update: (payload: Record<string, unknown>) => {
+        updateCalls.push(payload);
+        return {
+          eq: () => Promise.resolve({ data: null, error: null }),
+          not: () => Promise.resolve({ data: [], error: null }),
+        };
+      },
+    }),
+  }),
+}));
+
+describe("extractSubscriptionRef", () => {
+  it("returns the id for subscription resources", async () => {
+    const { extractSubscriptionRef } = await import("@/lib/paymongo");
+    expect(extractSubscriptionRef("subscription", "subs_abc", {})).toBe("subs_abc");
+  });
+
+  it("resolves invoice events through attributes.resource_id", async () => {
+    const { extractSubscriptionRef } = await import("@/lib/paymongo");
+    expect(
+      extractSubscriptionRef("invoice", "inv_xyz", { resource_id: "subs_def" })
+    ).toBe("subs_def");
+  });
+
+  it("ignores invoices whose resource_id is not a subscription", async () => {
+    const { extractSubscriptionRef } = await import("@/lib/paymongo");
+    expect(
+      extractSubscriptionRef("invoice", "inv_xyz", { resource_id: "inv_other" })
+    ).toBeNull();
+    expect(extractSubscriptionRef("payment", "pay_1", {})).toBeNull();
+  });
+});
+
+describe("handleSubscriptionUpdated", () => {
+  beforeEach(() => updateCalls.length = 0);
+
+  it("cancelled + future schedule keeps Pro and sets paid-through grace", async () => {
+    const { handleSubscriptionUpdated } = await import("@/lib/paymongo");
+    const future = new Date(Date.now() + 7 * 86_400_000)
+      .toISOString()
+      .slice(0, 10);
+    await handleSubscriptionUpdated("subs_cancelled", {
+      status: "cancelled",
+      next_billing_schedule: future,
+    });
+    const last = updateCalls[updateCalls.length - 1];
+    expect(last.subscription_status).toBe("cancelled");
+    expect(last.grace_period_ends_at).toContain(future);
+    expect(last.plan).toBeUndefined(); // downgrade deferred to cron
+  });
+
+  it("cancelled without remaining access downgrades immediately", async () => {
+    const { handleSubscriptionUpdated } = await import("@/lib/paymongo");
+    await handleSubscriptionUpdated("subs_gone", { status: "cancelled" });
+    const last = updateCalls[updateCalls.length - 1];
+    expect(last.plan).toBe("free");
+    expect(last.grace_period_ends_at).toBeNull();
+  });
+
+  it("active status re-grants Pro", async () => {
+    const { handleSubscriptionUpdated } = await import("@/lib/paymongo");
+    await handleSubscriptionUpdated("subs_reactivated", { status: "active" });
+    const last = updateCalls[updateCalls.length - 1];
+    expect(last.plan).toBe("pro");
+    expect(last.subscription_status).toBe("active");
+  });
+});
+
+describe("handleSubscriptionUnpaid", () => {
+  it("downgrades immediately (retries exhausted)", async () => {
+    updateCalls.length = 0;
+    const { handleSubscriptionUnpaid } = await import("@/lib/paymongo");
+    await handleSubscriptionUnpaid("subs_unpaid");
+    const last = updateCalls[updateCalls.length - 1];
+    expect(last.plan).toBe("free");
+    expect(last.subscription_status).toBe("unpaid");
+  });
+});

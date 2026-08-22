@@ -85,10 +85,19 @@ interface SubscriptionAttributes {
 
 export const PAYMONGO_API_BASE = "https://api.paymongo.com/v1";
 
+/**
+ * Currency + amounts are env-overridable because Subscriptions are a
+ * PHP-first product (all PayMongo examples use PHP); USD card acceptance is
+ * a separate account feature. Defaults preserve the $8/$80 USD pricing.
+ */
+const PLAN_CURRENCY = process.env.PAYMONGO_CURRENCY || "usd";
+const MONTHLY_AMOUNT = Number(process.env.PAYMONGO_MONTHLY_AMOUNT) || 800;
+const ANNUAL_AMOUNT = Number(process.env.PAYMONGO_ANNUAL_AMOUNT) || 8000;
+
 export const PAYMONGO_PLANS = {
   monthly: {
-    amount: 800, // $8.00 USD in cents
-    currency: "usd",
+    amount: MONTHLY_AMOUNT,
+    currency: PLAN_CURRENCY,
     productName: "AgentFlow Pro",
     productDescription:
       "Unlimited leads, unlimited pipelines, custom branding, SMS reminders",
@@ -96,8 +105,8 @@ export const PAYMONGO_PLANS = {
     intervalCount: 1,
   },
   annual: {
-    amount: 8000, // $80.00 USD in cents (10 months × $8)
-    currency: "usd",
+    amount: ANNUAL_AMOUNT,
+    currency: PLAN_CURRENCY,
     productName: "AgentFlow Pro (Annual)",
     productDescription:
       "Unlimited leads, unlimited pipelines, custom branding, SMS reminders — 2 months free",
@@ -262,51 +271,74 @@ export async function getOrCreatePayMongoCustomer(
 // Cache for plan IDs (created once, reused per interval)
 const _planCache: Record<string, string> = {};
 
+/**
+ * Plan endpoints differ across PayMongo doc generations: the current guide
+ * posts to /v1/subscriptions/plans while older integrations used /v1/plans.
+ * Try the documented path first, fall back to the legacy one.
+ */
+const PLAN_LIST_PATHS = ["/subscriptions/plans?limit=100", "/plans?limit=100"];
+const PLAN_CREATE_PATHS = ["/subscriptions/plans", "/plans"];
+
 async function getOrCreatePlan(interval: PlanInterval): Promise<string> {
   if (_planCache[interval]) return _planCache[interval];
 
   const config = PAYMONGO_PLANS[interval];
 
-  // Try to find existing plan
-  const existing = await payMongoFetch<
-    PayMongoListResponse<PlanAttributes>
-  >("/plans?limit=100");
-
-  const found = existing.data.find(
-    (p) =>
-      p.data.attributes.name === config.productName &&
-      p.data.attributes.amount === config.amount &&
-      p.data.attributes.currency === config.currency &&
-      p.data.attributes.interval === config.interval,
-  );
-
-  if (found) {
-    _planCache[interval] = found.data.id;
-    return _planCache[interval];
+  let lastListError: unknown = null;
+  for (const path of PLAN_LIST_PATHS) {
+    try {
+      const existing = await payMongoFetch<PayMongoListResponse<PlanAttributes>>(path);
+      const found = existing.data.find(
+        (p) =>
+          p.data.attributes.name === config.productName &&
+          p.data.attributes.amount === config.amount &&
+          p.data.attributes.currency === config.currency &&
+          p.data.attributes.interval === config.interval,
+      );
+      if (found) {
+        _planCache[interval] = found.data.id;
+        return _planCache[interval];
+      }
+      break; // listing worked; nothing matched -> go create
+    } catch (err) {
+      lastListError = err; // 404-style -> try legacy path
+    }
   }
 
-  // Create new plan
-  const result = await payMongoFetch<PayMongoApiResponse<PlanAttributes>>(
-    "/plans",
-    {
-      method: "POST",
-      body: JSON.stringify({
-        data: {
-          attributes: {
-            name: config.productName,
-            description: config.productDescription,
-            amount: config.amount,
-            currency: config.currency,
-            interval: config.interval,
-            interval_count: config.intervalCount,
-          },
-        },
-      }),
+  const body = JSON.stringify({
+    data: {
+      attributes: {
+        name: config.productName,
+        description: config.productDescription,
+        amount: config.amount,
+        currency: config.currency,
+        interval: config.interval,
+        interval_count: config.intervalCount,
+      },
     },
-  );
+  });
 
-  _planCache[interval] = result.data.id;
-  return _planCache[interval];
+  let lastCreateError: unknown = lastListError;
+  for (const path of PLAN_CREATE_PATHS) {
+    try {
+      const result = await payMongoFetch<PayMongoApiResponse<PlanAttributes>>(path, {
+        method: "POST",
+        body,
+      });
+      _planCache[interval] = result.data.id;
+      return _planCache[interval];
+    } catch (err) {
+      lastCreateError = err;
+    }
+  }
+
+  throw lastCreateError instanceof PayMongoError
+    ? lastCreateError
+    : new PayMongoError(
+        "Could not create or find PayMongo plan",
+        "plan_error",
+        500,
+      );
 }
 
 // ── Subscription Management ────────────────────────────────────────────
@@ -413,31 +445,6 @@ export async function handleSubscriptionActivated(
   }
 }
 
-export async function handleSubscriptionCancelled(
-  subscriptionId: string,
-): Promise<void> {
-  const supabase = createServiceClient();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("paymongo_subscription_id", subscriptionId)
-    .single();
-
-  if (profile) {
-    await supabase
-      .from("profiles")
-      .update({
-        plan: "free",
-        paymongo_subscription_id: null,
-        subscription_status: "cancelled",
-        grace_period_ends_at: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", profile.id);
-  }
-}
-
 export async function handlePaymentFailed(
   subscriptionId: string,
 ): Promise<void> {
@@ -492,16 +499,101 @@ export async function handlePaymentPaid(
   }
 }
 
+// ── Subscription lifecycle (official event catalog) ───────────────────
+
+/** Extract the subscription id from an event's embedded resource. Invoice
+ * events carry it in attributes.resource_id; subscription events in id. */
+export function extractSubscriptionRef(
+  resourceType: string,
+  resourceId: string,
+  attributes: Record<string, unknown>
+): string | null {
+  if (resourceType === "subscription") return resourceId;
+  if (resourceType === "invoice") {
+    const ref = attributes.resource_id;
+    return typeof ref === "string" && ref.startsWith("subs_") ? ref : null;
+  }
+  return null;
+}
+
+/** Payment retries exhausted — PayMongo stops collecting. Downgrade now. */
+export async function handleSubscriptionUnpaid(
+  subscriptionId: string,
+): Promise<void> {
+  await downgradeProfileBySubscription(subscriptionId, "unpaid");
+}
+
+/** Cancellation surfaced via subscription.updated (status=cancelled).
+ * PayMongo cancels immediately, but customers prepaid through
+ * next_billing_schedule — grant access until that date via the shared
+ * grace-period column; the billing-check cron performs the downgrade. */
+export async function handleSubscriptionUpdated(
+  subscriptionId: string,
+  attrs: Record<string, unknown>,
+): Promise<void> {
+  const supabase = createServiceClient();
+  const status = attrs.status;
+
+  if (status === "cancelled") {
+    const schedule =
+      typeof attrs.next_billing_schedule === "string"
+        ? attrs.next_billing_schedule
+        : null;
+    const graceEnds = schedule ? `${schedule}T23:59:59Z` : null;
+    const nowIso = new Date().toISOString();
+
+    if (graceEnds && graceEnds > nowIso) {
+      await supabase
+        .from("profiles")
+        .update({
+          subscription_status: "cancelled",
+          grace_period_ends_at: graceEnds,
+          updated_at: nowIso,
+        })
+        .eq("paymongo_subscription_id", subscriptionId);
+      return; // plan stays pro until cron downgrades
+    }
+    await downgradeProfileBySubscription(subscriptionId, "cancelled");
+    return;
+  }
+
+  if (status === "past_due") {
+    await handlePaymentFailed(subscriptionId);
+    return;
+  }
+  if (status === "active") {
+    await handleSubscriptionActivated(subscriptionId);
+  }
+}
+
+async function downgradeProfileBySubscription(
+  subscriptionId: string,
+  statusLabel: string,
+): Promise<void> {
+  const supabase = createServiceClient();
+  await supabase
+    .from("profiles")
+    .update({
+      plan: "free",
+      paymongo_subscription_id: null,
+      subscription_status: statusLabel === "unpaid" ? "unpaid" : "cancelled",
+      grace_period_ends_at: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("paymongo_subscription_id", subscriptionId);
+}
+
 // ── Grace Period Expiry (for cron) ─────────────────────────────────────
 
 export async function handleGracePeriodExpired(): Promise<number> {
   const supabase = createServiceClient();
 
   // Find all profiles past their grace period
+  // Covers both failed-payment grace AND cancelled-with-paid-through-date.
   const { data: profiles } = await supabase
     .from("profiles")
     .select("id")
-    .eq("subscription_status", "past_due")
+    .not("grace_period_ends_at", "is", null)
     .lt("grace_period_ends_at", new Date().toISOString());
 
   if (!profiles || profiles.length === 0) return 0;
@@ -521,6 +613,14 @@ export async function handleGracePeriodExpired(): Promise<number> {
   }
 
   return profiles.length;
+}
+
+export async function retrievePayMongoSubscription(
+  subscriptionId: string,
+): Promise<PayMongoApiResponse<SubscriptionAttributes>> {
+  return payMongoFetch<PayMongoApiResponse<SubscriptionAttributes>>(
+    `/subscriptions/${subscriptionId}`,
+  );
 }
 
 // ── Webhook Signature Verification ─────────────────────────────────────

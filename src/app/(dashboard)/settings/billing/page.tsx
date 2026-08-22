@@ -16,7 +16,8 @@ function BillingContent() {
   const [cancelling, setCancelling] = useState(false);
   const [plan, setPlan] = useState<"free" | "pro">("free");
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
-  const [subscriptionInterval, setSubscriptionInterval] = useState<string>("month");
+  const [subscriptionInterval, setSubscriptionInterval] = useState<string>("monthly");
+  const [accessEndsAt, setAccessEndsAt] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -34,7 +35,10 @@ function BillingContent() {
         if (profile) {
           setPlan(profile.plan as "free" | "pro");
           setSubscriptionStatus(profile.subscription_status);
-          setSubscriptionInterval(profile.subscription_interval || "month");
+          setSubscriptionInterval(
+            profile.subscription_interval === "annual" ? "annual" : "monthly"
+          );
+          setAccessEndsAt(profile.grace_period_ends_at ?? null);
         }
       }
       setLoadingProfile(false);
@@ -81,11 +85,15 @@ function BillingContent() {
       const res = await fetch("/api/paymongo/cancel", { method: "POST" });
       const data = await res.json();
       if (data.success) {
-        // The webhook owns the actual plan downgrade at period end. Keep the
-        // Pro badge — flipping it to Free here contradicted the success
-        // message ("remain on Pro until end of billing period").
-        setSuccess("Your subscription has been cancelled. You'll remain on Pro until the end of your billing period.");
+        // PayMongo cancels immediately; the app grants paid-through access via
+        // grace_period_ends_at (billing-check cron downgrades after it).
         setSubscriptionStatus("cancelled");
+        if (data.accessEndsAt) setAccessEndsAt(data.accessEndsAt);
+        setSuccess(
+          data.accessEndsAt
+            ? `Subscription cancelled. You keep Pro until ${new Date(data.accessEndsAt).toLocaleDateString()}.`
+            : "Your subscription has been cancelled."
+        );
       } else {
         setError(data.error || "Failed to cancel subscription. Please try again.");
       }
@@ -101,6 +109,20 @@ function BillingContent() {
         <h1 className="font-heading text-2xl font-bold text-surface-900">Billing</h1>
         <p className="text-surface-500 text-sm mt-1">Manage your subscription</p>
       </div>
+
+      {plan === "pro" && subscriptionStatus === "cancelled" && accessEndsAt && (
+        <div className="mb-6 p-4 rounded-lg bg-accent-50 border border-accent-100 flex items-start gap-3">
+          <CreditCard className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm text-surface-700 font-medium">
+              Subscription ends {new Date(accessEndsAt).toLocaleDateString()}
+            </p>
+            <p className="text-xs text-surface-500 mt-1">
+              You keep Pro features until then. Resubscribe any time before or after.
+            </p>
+          </div>
+        </div>
+      )}
 
       {success && (
         <div className="mb-6 p-4 rounded-lg bg-success-50 border border-success-100 flex items-center gap-3">

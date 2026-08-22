@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   verifyWebhookSignature,
+  extractSubscriptionRef,
   handleSubscriptionActivated,
-  handleSubscriptionCancelled,
+  handleSubscriptionUpdated,
+  handleSubscriptionUnpaid,
   handlePaymentFailed,
   handlePaymentPaid,
   PayMongoError,
@@ -11,11 +13,17 @@ import { createServiceClient } from "@/lib/supabase/service";
 
 interface PayMongoWebhookEvent {
   id: string;
-  type: string;
-  data: {
-    id: string;
+  type: "event";
+  attributes: {
     type: string;
-    attributes: Record<string, unknown>;
+    livemode?: boolean;
+    created_at?: number;
+    /** The full resource object at event time. */
+    data: {
+      id: string;
+      type: string;
+      attributes?: Record<string, unknown>;
+    };
   };
 }
 
@@ -55,13 +63,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const eventType = event.attributes?.type ?? "";
+  const resource = event.attributes?.data;
+  const resourceAttrs = resource?.attributes ?? {};
+
   const supabase = createServiceClient();
 
   // Atomic dedup: insert the event first. The unique constraint on
   // paymongo_event_id guarantees that only one delivery can be processed.
   const { error: insertError } = await supabase.from("webhook_events").insert({
     paymongo_event_id: event.id,
-    event_type: event.type,
+    event_type: eventType || "unknown",
     status: "pending",
   });
 
@@ -90,20 +102,30 @@ export async function POST(request: NextRequest) {
 
   // Process event
   try {
-    const subscriptionId = event.data.id;
+    const subscriptionId = resource
+      ? extractSubscriptionRef(resource.type ?? "", resource.id ?? "", resourceAttrs)
+      : null;
 
-    switch (event.type) {
+    switch (eventType) {
       case "subscription.activated":
-        await handleSubscriptionActivated(subscriptionId);
+        if (subscriptionId) await handleSubscriptionActivated(subscriptionId);
         break;
-      case "subscription.cancelled":
-        await handleSubscriptionCancelled(subscriptionId);
+      case "subscription.updated":
+        if (subscriptionId) {
+          await handleSubscriptionUpdated(subscriptionId, resourceAttrs);
+        }
         break;
-      case "invoice.payment_failed":
-        await handlePaymentFailed(subscriptionId);
+      case "subscription.past_due":
+        if (subscriptionId) await handlePaymentFailed(subscriptionId);
         break;
-      case "invoice.paid":
-        await handlePaymentPaid(subscriptionId);
+      case "subscription.unpaid":
+        if (subscriptionId) await handleSubscriptionUnpaid(subscriptionId);
+        break;
+      case "subscription.invoice.paid":
+        if (subscriptionId) await handlePaymentPaid(subscriptionId);
+        break;
+      case "subscription.invoice.payment_failed":
+        if (subscriptionId) await handlePaymentFailed(subscriptionId);
         break;
       default:
         // Unhandled event types are acknowledged with 200 so PayMongo does

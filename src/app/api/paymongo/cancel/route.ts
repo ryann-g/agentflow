@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { apiRateLimit } from "@/lib/rate-limiter";
 import {
   cancelPayMongoSubscription,
+  retrievePayMongoSubscription,
   PayMongoError,
 } from "@/lib/paymongo";
 
@@ -55,13 +56,37 @@ export async function POST() {
     );
   }
 
-  try {
-    await cancelPayMongoSubscription(profile.paymongo_subscription_id);
+  const subscriptionId = profile.paymongo_subscription_id;
 
-    // Webhook will handle the actual plan downgrade
-    // For now, just acknowledge the cancellation request
+  try {
+    // PayMongo cancels IMMEDIATELY (no Stripe-style period-end flag), so
+    // customers would lose Pro they already paid for. Capture the paid-
+    // through date BEFORE cancelling and park it in the shared grace column;
+    // the billing-check cron downgrades once that date passes.
+    let accessEndsAt: string | null = null;
+    try {
+      const sub = await retrievePayMongoSubscription(subscriptionId);
+      const schedule = sub.data.attributes.next_billing_schedule;
+      if (typeof schedule === "string" && schedule.length >= 10) {
+        accessEndsAt = `${schedule.slice(0, 10)}T23:59:59Z`;
+      }
+    } catch {
+      // Non-fatal: without a schedule the webhook downgrades immediately.
+    }
+
+    await cancelPayMongoSubscription(subscriptionId);
+
+    await supabase
+      .from("profiles")
+      .update({
+        subscription_status: "cancelled",
+        ...(accessEndsAt ? { grace_period_ends_at: accessEndsAt } : {}),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", user.id);
+
     return NextResponse.json(
-      { success: true },
+      { success: true, accessEndsAt },
       {
         headers: {
           "X-RateLimit-Limit": String(rateLimitResult.limit),

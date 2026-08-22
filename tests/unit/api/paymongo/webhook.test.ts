@@ -18,7 +18,8 @@ vi.mock("@/lib/paymongo", async (importOriginal) => {
     ...original,
     verifyWebhookSignature: mockVerifyWebhook,
     handleSubscriptionActivated: vi.fn(),
-    handleSubscriptionCancelled: vi.fn(),
+    handleSubscriptionUpdated: vi.fn(),
+    handleSubscriptionUnpaid: vi.fn(),
     handlePaymentFailed: vi.fn(),
     handlePaymentPaid: vi.fn(),
   };
@@ -152,8 +153,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_dup",
-      type: "subscription.activated",
-      data: { id: "sub_123", type: "subscription", attributes: {} },
+      attributes: {
+        type: "subscription.activated",
+        data: { id: "sub_123", type: "subscription", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -188,8 +191,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_retry",
-      type: "subscription.activated",
-      data: { id: "sub_retry", type: "subscription", attributes: {} },
+      attributes: {
+        type: "subscription.activated",
+        data: { id: "sub_retry", type: "subscription", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -213,8 +218,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_001",
-      type: "subscription.activated",
-      data: { id: "sub_activated", type: "subscription", attributes: {} },
+      attributes: {
+        type: "subscription.activated",
+        data: { id: "sub_activated", type: "subscription", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -238,8 +245,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_002",
-      type: "subscription.cancelled",
-      data: { id: "sub_cancelled", type: "subscription", attributes: {} },
+      attributes: {
+        type: "subscription.cancelled",
+        data: { id: "sub_cancelled", type: "subscription", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -263,8 +272,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_003",
-      type: "invoice.payment_failed",
-      data: { id: "inv_failed", type: "invoice", attributes: {} },
+      attributes: {
+        type: "invoice.payment_failed",
+        data: { id: "inv_failed", type: "invoice", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -288,8 +299,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_004",
-      type: "invoice.paid",
-      data: { id: "inv_paid", type: "invoice", attributes: {} },
+      attributes: {
+        type: "invoice.paid",
+        data: { id: "inv_paid", type: "invoice", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -313,8 +326,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_005",
-      type: "some.unknown.event",
-      data: { id: "x", type: "unknown", attributes: {} },
+      attributes: {
+        type: "some.unknown.event",
+        data: { id: "x", type: "unknown", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
@@ -343,8 +358,10 @@ describe("/api/paymongo/webhook", () => {
 
     const payload = JSON.stringify({
       id: "evt_err",
-      type: "subscription.activated",
-      data: { id: "sub_err", type: "subscription", attributes: {} },
+      attributes: {
+        type: "subscription.activated",
+        data: { id: "sub_err", type: "subscription", attributes: {} },
+      },
     });
 
     const { POST } = await import("@/app/api/paymongo/webhook/route");
