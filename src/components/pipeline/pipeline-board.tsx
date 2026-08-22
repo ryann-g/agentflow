@@ -18,7 +18,6 @@ import {
 import Link from "next/link";
 import { getLeadScore } from "@/lib/utils";
 import type { Database } from "@/types";
-import { ActionPopup } from "@/components/action-popup";
 
 type Lead = Database["public"]["Tables"]["leads"]["Row"];
 
@@ -55,23 +54,12 @@ function LeadCard({
   onStageChange: (leadId: string, newStage: string) => void;
 }) {
   const [showStageMenu, setShowStageMenu] = useState(false);
-  const [activePopup, setActivePopup] = useState<"email" | "call" | "text" | null>(null);
   const stageMenuRef = useRef<HTMLDivElement>(null);
 
   useDismiss(stageMenuRef, () => setShowStageMenu(false), showStageMenu);
-  const callButtonRef = useRef<HTMLButtonElement>(null);
-  const emailButtonRef = useRef<HTMLButtonElement>(null);
-  const textButtonRef = useRef<HTMLButtonElement>(null);
   const score = getLeadScore(lead);
   const isOverdue =
     lead.next_action_date && lead.next_action_date < new Date().toISOString().split("T")[0];
-
-  const getAnchorRef = () => {
-    if (activePopup === "call") return callButtonRef;
-    if (activePopup === "email") return emailButtonRef;
-    if (activePopup === "text") return textButtonRef;
-    return undefined;
-  };
 
   return (
     <Card
@@ -142,49 +130,38 @@ function LeadCard({
             )}
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="relative flex items-center gap-1">
+          {/* Quick Actions — real device intents, matching leads/follow-ups */}
+          <div className="flex items-center gap-1">
             {lead.phone && (
-              <button
-                ref={callButtonRef}
-                type="button"
-                onClick={() => setActivePopup(activePopup === "call" ? null : "call")}
-                className="p-1.5 rounded-lg text-surface-500 hover:text-green-600 hover:bg-green-50 transition-colors"
+              <a
+                href={`tel:${lead.phone}`}
+                aria-label="Call"
                 title="Call"
+                className="p-2 rounded-lg hover:bg-surface-100 text-surface-500 hover:text-primary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <Phone className="h-3.5 w-3.5" />
-              </button>
+              </a>
             )}
             {lead.email && (
-              <button
-                ref={emailButtonRef}
-                type="button"
-                onClick={() => setActivePopup(activePopup === "email" ? null : "email")}
-                className="p-1.5 rounded-lg text-surface-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+              <a
+                href={`mailto:${lead.email}`}
+                aria-label="Send email"
                 title="Email"
+                className="p-2 rounded-lg hover:bg-surface-100 text-surface-500 hover:text-primary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <Mail className="h-3.5 w-3.5" />
-              </button>
+              </a>
             )}
             {lead.phone && (
-              <button
-                ref={textButtonRef}
-                type="button"
-                onClick={() => setActivePopup(activePopup === "text" ? null : "text")}
-                className="p-1.5 rounded-lg text-surface-500 hover:text-purple-600 hover:bg-purple-50 transition-colors"
+              <a
+                href={`sms:${lead.phone}`}
+                aria-label="Send text message"
                 title="Text"
+                className="p-2 rounded-lg hover:bg-surface-100 text-surface-500 hover:text-primary transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-              </button>
+              </a>
             )}
-            <ActionPopup
-              action={activePopup}
-              leadName={lead.full_name}
-              leadEmail={lead.email}
-              leadPhone={lead.phone}
-              onClose={() => setActivePopup(null)}
-              anchorRef={getAnchorRef()}
-            />
           </div>
         </div>
       </div>
