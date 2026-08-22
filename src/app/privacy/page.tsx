@@ -155,7 +155,7 @@ export default function PrivacyPage() {
                         </p>
                         <p>
                           <strong>Payment Information:</strong> Processed via
-                          Stripe. We do not store full credit card numbers; we
+                          PayMongo. We do not store full credit card numbers; we
                           retain only the last four digits and basic billing
                           details.
                         </p>
@@ -207,7 +207,7 @@ export default function PrivacyPage() {
                           <li>
                             <strong>Service Providers:</strong> Shared with
                             trusted partners to facilitate our service delivery
-                            (Stripe for payments, Resend for email, Supabase for
+                            (PayMongo for payments, Resend for email, Supabase for
                             database hosting, and Cloudflare for security).
                           </li>
                           <li>

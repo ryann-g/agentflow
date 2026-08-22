@@ -108,8 +108,12 @@ describe("/privacy page (source assertions)", () => {
     expect(source).toContain("cloudflare.com/privacypolicy");
   });
 
-  it("mentions Stripe for payment processing", () => {
-    expect(source).toMatch(/Stripe/i);
+  it("mentions PayMongo for payment processing", () => {
+    expect(source).toMatch(/PayMongo/i);
+  });
+
+  it("does not name Stripe as the payment processor", () => {
+    expect(source).not.toMatch(/Stripe/i);
   });
 
   it("mentions Supabase for database hosting", () => {
