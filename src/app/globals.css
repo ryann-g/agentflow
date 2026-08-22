@@ -70,7 +70,7 @@
 
   .btn-primary {
     @apply bg-cta text-white font-semibold rounded-button px-6 py-3 min-h-touch
-           hover:bg-orange-600 active:bg-orange-700
+           hover:bg-cta-600 active:bg-cta-700
            transition-all duration-200 ease-out
            disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none
            cursor-pointer;

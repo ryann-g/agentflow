@@ -16,7 +16,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
     const variants = {
       primary: "bg-primary text-white hover:bg-primary-700 active:bg-primary-800",
-      cta: "bg-cta text-white hover:bg-orange-600 active:bg-orange-700",
+      cta: "bg-cta text-white hover:bg-cta-600 active:bg-cta-700",
       secondary: "bg-surface-100 text-surface-700 hover:bg-surface-200 active:bg-surface-300 border border-surface-200",
       accent: "bg-accent text-white hover:bg-accent-600 active:bg-accent-800",
       destructive: "bg-destructive text-white hover:bg-destructive-700 active:bg-destructive-700",
