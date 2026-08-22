@@ -59,3 +59,33 @@ Billing-check downgrades profiles whose `grace_period_ends_at` has passed
   vaulting (publishable key + PayMongo JS) — not built yet. v1 recovery =
   hosted `setup_intent.next_action_url` re-auth link when pending, else
   cancel-and-resubscribe.
+
+## 7. Outreach draft — Subscriptions enablement (STATUS: parked)
+> Blocker: account KYC needs 2 valid IDs; only 1 available currently.
+> Send from hello@agent-flow.app (Resend, send-only key) once account exists.
+
+```
+To: support@paymongo.com
+Subject: Enable Subscriptions API for AgentFlow (agent-flow.app)
+
+Hi PayMongo Support,
+
+We're AgentFlow — a SaaS CRM for solo real-estate agents, live at
+https://agent-flow.app (pricing, terms, and privacy pages published).
+
+Our PayMongo integration is built against your current docs and ready for
+validation:
+  • Plans + Subscriptions + Customers APIs (server-side only)
+  • Card vaulting via Customer objects for recurring cycles
+  • Webhook handler with signature verification for subscription.* and
+    subscription.invoice.* events
+
+Request: please enable the Subscriptions capability on our account
+[PAYMONGO ACCOUNT EMAIL] for both test and live mode, including
+Visa/Mastercard card payments (+ Maya if available on subscriptions).
+
+Happy to provide anything else you need for verification.
+
+Thanks,
+Ryan — AgentFlow
+```
