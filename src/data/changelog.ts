@@ -19,6 +19,22 @@ import type { ChangelogEntry } from "@/lib/changelog";
  */
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    id: "security-speed-billing-foundations",
+    date: "2026-08-22",
+    version: "0.28.0",
+    title: "Faster dashboard, safer accounts, smarter billing states",
+    summary:
+      "Our biggest reliability release yet: the whole app moved to the latest web framework, account security got a major upgrade, and the billing page now tells you exactly what is happening with your subscription.",
+    items: [
+      "Pipeline quick actions now really call, text, or email your leads — one tap from any card",
+      "Clearer billing status: see exactly when cancelled access ends, with self-service recovery if a payment fails",
+      "Major security hardening across accounts, imports, and payment webhooks",
+      "Faster dashboard — less duplicate loading behind the scenes",
+      "Password reset fully working end to end",
+      "Upgraded core framework for speed and future features",
+    ],
+  },
+  {
     id: "paymongo-checkout",
     date: "2026-06-30",
     version: "0.27.0",

@@ -15,6 +15,9 @@ variable.
 | `PAYMONGO_SECRET_KEY` | no | yes | Vercel only |
 | `PAYMONGO_WEBHOOK_SECRET` | no | yes | Vercel only |
 | `NEXT_PUBLIC_PAYMONGO_PUBLIC_KEY` | yes | yes | Vercel + local |
+| `PAYMONGO_CURRENCY` | no | yes | Vercel only — plan currency (default `usd`; PHP-first platform) |
+| `PAYMONGO_MONTHLY_AMOUNT` | no | yes | Vercel only — monthly price in smallest unit (default `800`) |
+| `PAYMONGO_ANNUAL_AMOUNT` | no | yes | Vercel only — annual price in smallest unit (default `8000`) |
 | `RESEND_API_KEY` | no | yes | Vercel only |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | yes | yes | Vercel + local |
 | `NEXT_PUBLIC_TURNSTILE_TEST_BYPASS` | yes | no | Vercel Preview only |

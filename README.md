@@ -4,7 +4,7 @@
 
 [![Status](https://img.shields.io/badge/status-live-brightgreen)](https://agent-flow.app)
 [![License: BUSL 1.1](https://img.shields.io/badge/License-BUSL_1.1-blue.svg)](LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-14-black)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
 
 ---
@@ -56,7 +56,7 @@ AgentFlow is built on a modern, production-grade stack:
 
 | Layer | Technology |
 |---|---|
-| Framework | Next.js 14 (App Router, TypeScript) |
+| Framework | Next.js 16 (App Router, Turbopack, TypeScript, React 19) |
 | Styling | Tailwind CSS 3.4 |
 | Database | Supabase (PostgreSQL) |
 | Authentication | Supabase Auth (Magic Link + Google OAuth) |
