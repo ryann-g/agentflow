@@ -15,17 +15,22 @@ import {
  * falls back to cancel-and-resubscribe guidance.
  */
 export async function GET() {
-  if (!process.env.PAYMONGO_SECRET_KEY) {
-    return NextResponse.json({ error: "PayMongo not configured" }, { status: 500 });
-  }
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Auth BEFORE config check: an unauthenticated caller must not learn
+  // whether billing is configured on this deployment.
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!process.env.PAYMONGO_SECRET_KEY) {
+    return NextResponse.json(
+      { error: "Billing is temporarily unavailable" },
+      { status: 503 }
+    );
   }
 
   const { allowed } = await apiRateLimit(`paymongo:pmurl:${user.id}`, 10, 60);
