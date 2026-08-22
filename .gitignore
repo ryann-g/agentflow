@@ -58,8 +58,8 @@ supabase/config.toml
 supabase/.temp/
 .env*
 
-# scripts (local dev tools, not part of app)
-scripts/
+# scripts (local dev tools, not part of app) — anchored to repo root
+/scripts/
 
 # Python
 __pycache__/
