@@ -18,6 +18,7 @@ function BillingContent() {
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null);
   const [subscriptionInterval, setSubscriptionInterval] = useState<string>("monthly");
   const [accessEndsAt, setAccessEndsAt] = useState<string | null>(null);
+  const [pmAuthUrl, setPmAuthUrl] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -39,6 +40,14 @@ function BillingContent() {
             profile.subscription_interval === "annual" ? "annual" : "monthly"
           );
           setAccessEndsAt(profile.grace_period_ends_at ?? null);
+
+          // Failed-payment recovery: surface hosted re-auth link when pending.
+          if (profile.plan === "pro" && profile.subscription_status === "past_due") {
+            fetch("/api/paymongo/payment-method-url")
+              .then((r) => (r.ok ? r.json() : { url: null }))
+              .then((d) => setPmAuthUrl(d.url ?? null))
+              .catch(() => setPmAuthUrl(null));
+          }
         }
       }
       setLoadingProfile(false);
@@ -124,6 +133,19 @@ function BillingContent() {
         </div>
       )}
 
+      {!loadingProfile && (
+        <button
+          type="button"
+          onClick={() => {
+            setLoadingProfile(true);
+            window.location.reload();
+          }}
+          className="mb-4 text-xs text-surface-500 hover:text-surface-700 underline"
+        >
+          Completed a payment? Refresh status
+        </button>
+      )}
+
       {success && (
         <div className="mb-6 p-4 rounded-lg bg-success-50 border border-success-100 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-success-500 shrink-0" />
@@ -137,8 +159,22 @@ function BillingContent() {
           <div>
             <p className="text-sm text-warning-700 font-medium">Payment past due</p>
             <p className="text-xs text-warning-600 mt-1">
-              Your payment failed. Please update your payment method to keep your Pro plan active.
+              Your payment failed. PayMongo will retry up to 3 times — act now to keep Pro.
             </p>
+            {pmAuthUrl ? (
+              <a
+                href={pmAuthUrl}
+                className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-primary hover:underline"
+              >
+                Update card / re-authenticate
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            ) : (
+              <p className="text-xs text-surface-500 mt-2">
+                No re-authentication is currently pending. If retries are exhausted,
+                cancel and resubscribe to vault a new card.
+              </p>
+            )}
           </div>
         </div>
       )}

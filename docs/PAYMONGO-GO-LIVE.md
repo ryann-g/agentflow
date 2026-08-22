@@ -55,3 +55,7 @@ Billing-check downgrades profiles whose `grace_period_ends_at` has passed
 - Cancellation is immediate at PayMongo; app-side end-of-period access is our
   own grace mechanism — do not remove `grace_period_ends_at` handling.
 - Plan ids are cached in-memory per lambda instance; safe.
+- Payment-method changes: full self-service requires client-side card
+  vaulting (publishable key + PayMongo JS) — not built yet. v1 recovery =
+  hosted `setup_intent.next_action_url` re-auth link when pending, else
+  cancel-and-resubscribe.

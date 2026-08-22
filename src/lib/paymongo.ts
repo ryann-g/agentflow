@@ -76,6 +76,13 @@ interface SubscriptionAttributes {
     };
   } | null;
   next_billing_schedule: string | null;
+  /** Present when re-authentication is required (e.g., updating the card). */
+  setup_intent?: {
+    id: string;
+    last_setup_error?: string;
+    next_action_url?: string;
+    status: string;
+  } | null;
   cancelled_at: number | null;
   created_at: number;
   updated_at: number;
