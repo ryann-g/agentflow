@@ -1,8 +1,11 @@
 name: Production Release
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    # Nightly release window: 17:00 Manila / 09:00 UTC — end of business day.
+    # Sole deploy path to production (Vercel git integration is disconnected);
+    # pushes to main accumulate during the day and ship once nightly.
+    - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
       version_bump:
@@ -14,6 +17,11 @@ on:
           - patch
           - minor
           - major
+      force:
+        description: "Release even if no new commits since last tag"
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: production-deploy
@@ -24,11 +32,62 @@ env:
 
 jobs:
   # ─────────────────────────────────────────────
+  # 0. CHANGE GUARD (nightly cron no-ops on quiet days)
+  # ─────────────────────────────────────────────
+  changes:
+    name: check-new-commits
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.check.outputs.should_release }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Skip if no commits since last release
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE: ${{ github.event.inputs.force }}
+        run: |
+          if [ "$FORCE" = "true" ]; then
+            echo "[INFO] Manual force requested"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          LATEST_TAG=$(gh release view --json tagName --jq '.tagName' 2>/dev/null || echo "")
+          if [ -z "$LATEST_TAG" ]; then
+            LATEST_TAG=$(git tag --sort=-v:refname | head -1 2>/dev/null || echo "")
+          fi
+
+          if [ -z "$LATEST_TAG" ]; then
+            echo "[INFO] No previous release — releasing initial version"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          TAG_SHA=$(git rev-list -n 1 "${LATEST_TAG}" 2>/dev/null || echo "")
+          HEAD_SHA=$(git rev-parse HEAD)
+
+          if [ "$TAG_SHA" = "$HEAD_SHA" ]; then
+            echo "[SKIP] HEAD ${HEAD_SHA:0:7} is already released as ${LATEST_TAG}"
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "[OK] New commits since ${LATEST_TAG} (${TAG_SHA:0:7}..${HEAD_SHA:0:7})"
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ─────────────────────────────────────────────
   # 1. VALIDATE
   # ─────────────────────────────────────────────
   validate:
     name: validate
     runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.should_release == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v5
