@@ -30,7 +30,7 @@ function BillingContent() {
       if (user) {
         const { data: profile } = await supabase
           .from("profiles")
-          .select("plan, subscription_status, subscription_interval")
+          .select("plan, subscription_status, subscription_interval, grace_period_ends_at")
           .eq("id", user.id)
           .single();
         if (profile) {
