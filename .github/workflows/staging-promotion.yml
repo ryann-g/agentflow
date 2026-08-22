@@ -9,7 +9,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_VERSION: "20"
+  NODE_VERSION: "22"
   SUPABASE_PROJECT_ID: fsxdduvwshirrheenmag
 
 jobs:
