@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { fetchLeads } from "@/hooks/useLeads";
+import { useOverdueCount } from "@/hooks/use-overdue-count";
 import {
   LayoutDashboard,
   Users,
@@ -28,7 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [userName, setUserName] = useState("User");
   const [userPlan, setUserPlan] = useState("Free Plan");
-  const [overdueCount, setOverdueCount] = useState(0);
+  const overdueCount = useOverdueCount();
   const supabase = createClient();
 
   useEffect(() => {
@@ -49,19 +49,7 @@ export function Sidebar() {
     fetchProfile();
   }, [supabase]);
 
-  useEffect(() => {
-    async function loadCounts() {
-      const { data } = await fetchLeads();
-      if (data) {
-        const today = new Date().toISOString().split("T")[0];
-        const overdue = data.filter(
-          (l) => l.next_action_date && l.next_action_date < today
-        ).length;
-        setOverdueCount(overdue);
-      }
-    }
-    loadCounts();
-  }, []);
+  
 
   function getBadgeCount(badge: "overdue" | null): number | null {
     if (badge === "overdue") return overdueCount > 0 ? overdueCount : null;

@@ -21,13 +21,14 @@ import type { Database } from "@/types";
 
 type Lead = Database["public"]["Tables"]["leads"]["Row"];
 
+// Stage colors use design tokens only (tailwind.config.ts).
 const STAGES = [
-  { key: "new_lead", label: "New Lead", color: "bg-sky-100 text-sky-700" },
-  { key: "contacted", label: "Contacted", color: "bg-amber-100 text-amber-700" },
-  { key: "showing", label: "Showing", color: "bg-purple-100 text-purple-700" },
-  { key: "offer", label: "Offer", color: "bg-orange-100 text-orange-700" },
-  { key: "closed_won", label: "Closed Won", color: "bg-green-100 text-green-700" },
-  { key: "closed_lost", label: "Closed Lost", color: "bg-red-100 text-red-700" },
+  { key: "new_lead", label: "New Lead", color: "bg-primary-50 text-primary-700" },
+  { key: "contacted", label: "Contacted", color: "bg-accent-50 text-accent-700" },
+  { key: "showing", label: "Showing", color: "bg-warning-50 text-warning-700" },
+  { key: "offer", label: "Offer", color: "bg-cta-50 text-cta-700" },
+  { key: "closed_won", label: "Closed Won", color: "bg-success-50 text-success-700" },
+  { key: "closed_lost", label: "Closed Lost", color: "bg-destructive-50 text-destructive-700" },
 ] as const;
 
 type StageKey = (typeof STAGES)[number]["key"];
@@ -39,9 +40,9 @@ interface PipelineBoardProps {
 }
 
 function ScoreIcon({ score }: { score: "hot" | "warm" | "cold" }) {
-  if (score === "hot") return <Flame className="h-3.5 w-3.5 text-red-500" />;
-  if (score === "warm") return <Thermometer className="h-3.5 w-3.5 text-orange-500" />;
-  return <Snowflake className="h-3.5 w-3.5 text-blue-500" />;
+  if (score === "hot") return <Flame className="h-3.5 w-3.5 text-destructive" />;
+  if (score === "warm") return <Thermometer className="h-3.5 w-3.5 text-warning-600" />;
+  return <Snowflake className="h-3.5 w-3.5 text-accent" />;
 }
 
 function LeadCard({
@@ -64,7 +65,7 @@ function LeadCard({
   return (
     <Card
       className={`mb-2 ${updating === lead.id ? "opacity-50" : ""} ${
-        isOverdue ? "border-l-2 border-l-red-400" : ""
+        isOverdue ? "border-l-2 border-l-destructive" : ""
       }`}
     >
       <div className="p-3">
@@ -122,7 +123,7 @@ function LeadCard({
           <div className="flex items-center gap-1 text-xs text-surface-500">
             <Clock className="h-3 w-3" />
             {lead.next_action_date ? (
-              <span className={isOverdue ? "text-red-500 font-medium" : ""}>
+              <span className={isOverdue ? "text-destructive font-medium" : ""}>
                 {new Date(lead.next_action_date).toLocaleDateString()}
               </span>
             ) : (

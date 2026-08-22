@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { fetchLeads } from "@/hooks/useLeads";
+import { useOverdueCount } from "@/hooks/use-overdue-count";
 import { LayoutDashboard, Users, UserPlus, Contact, Settings } from "lucide-react";
 
 const navItems = [
@@ -17,21 +17,9 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname();
-  const [overdueCount, setOverdueCount] = useState(0);
+  const overdueCount = useOverdueCount();
 
-  useEffect(() => {
-    async function loadCounts() {
-      const { data } = await fetchLeads();
-      if (data) {
-        const today = new Date().toISOString().split("T")[0];
-        const overdue = data.filter(
-          (l) => l.next_action_date && l.next_action_date < today
-        ).length;
-        setOverdueCount(overdue);
-      }
-    }
-    loadCounts();
-  }, []);
+  
 
   function getBadgeCount(badge: "overdue" | null): number | null {
     if (badge === "overdue") return overdueCount > 0 ? overdueCount : null;
