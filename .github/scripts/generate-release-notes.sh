@@ -52,7 +52,7 @@ credit() {
 }
 while read -r email; do
   [ -n "$email" ] && credit "$email"
-done < <(git log ${COMMIT_RANGE} --pretty=format:"%ae" --no-merges 2>/dev/null | sort -u)
+done < <(git log ${COMMIT_RANGE} --pretty=tformat:"%ae" --no-merges 2>/dev/null | sort -u)
 if [ -n "$GH_ACTOR" ]; then credit "${GH_ACTOR}@workflow"; fi
 
 # ---------------- categorize ----------------
@@ -77,7 +77,7 @@ while IFS=$'\t' read -r hash subject; do
   esac
   [ -n "$clean" ] || clean="$subject"
   printf -- '- %s (`%s`)\n' "$clean" "$hash" >> "$TMP/sec-$cat.txt"
-done < <(git log ${COMMIT_RANGE} --pretty=format:"%h%x09%s" --no-merges 2>/dev/null)
+done < <(git log ${COMMIT_RANGE} --pretty=tformat:"%h%x09%s" --no-merges 2>/dev/null)
 
 cat "$TMP/sec-perf.txt" "$TMP/sec-refactor.txt" 2>/dev/null > "$TMP/sec-changed.txt" || true
 cat "$TMP/sec-test.txt" "$TMP/sec-docs.txt" "$TMP/sec-ci.txt" \
