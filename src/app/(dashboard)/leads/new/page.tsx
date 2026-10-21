@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { showToast } from "@/components/ui/toast";
 import { checkPlanLimit } from "@/lib/plan-limit";
+import { createLead } from "@/hooks/useLeads";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 
@@ -18,7 +19,9 @@ const SOURCES = [
   { value: "open_house", label: "Open House" },
   { value: "zillow", label: "Zillow" },
   { value: "other", label: "Other" },
-];
+] as const;
+
+type LeadSource = (typeof SOURCES)[number]["value"];
 
 export default function NewLeadPage() {
   const [fullName, setFullName] = useState("");
@@ -66,20 +69,29 @@ export default function NewLeadPage() {
       return;
     }
 
-    const { error: insertError } = await supabase.from("leads").insert({
-      user_id: user.id,
+    // Writes go through POST /api/leads so the route's Zod validation, rate
+    // limit and free-tier plan limit apply. checkPlanLimit() above is only a
+    // fast UX pre-check — the server is the authority.
+    const { error: insertError, status } = await createLead({
       full_name: fullName,
       email: email || null,
       phone: phone || null,
-      source: source as "manual" | "csv_import" | "website" | "referral" | "open_house" | "zillow" | "other",
-      pipeline_stage: "new_lead",
+      source: source as LeadSource,
       next_action: nextAction || null,
       next_action_date: nextActionDate || null,
       notes: notes || null,
     });
 
     if (insertError) {
-      setError(insertError.message);
+      if (status === 403) {
+        // The server enforced the free-tier cap. Offer the upgrade path.
+        showToast(insertError, "error", {
+          label: "Upgrade to Pro",
+          href: "/settings/billing",
+        });
+      } else {
+        setError(insertError);
+      }
       setLoading(false);
       return;
     }

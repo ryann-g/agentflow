@@ -1,31 +1,20 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { showToast } from "@/components/ui/toast";
 import { Trash2 } from "lucide-react";
-import type { Database } from "@/types";
-
-type Lead = Database["public"]["Tables"]["leads"]["Row"];
+import { deleteLead } from "@/hooks/useLeads";
 
 export function DeleteLeadButton({ leadId }: { leadId: string }) {
   const router = useRouter();
-  const supabase = createClient();
 
   async function handleDelete() {
     if (!confirm("Are you sure you want to delete this lead?")) return;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from("leads")
-      .update({ is_active: false, updated_at: new Date().toISOString() })
-      .eq("id", leadId)
-      .eq("user_id", user.id);
+    // Soft delete goes through DELETE /api/leads/[id] so the route's
+    // ownership scoping and rate limit apply.
+    const { error } = await deleteLead(leadId);
 
     if (error) {
       showToast("Failed to delete lead. Please try again.", "error");
