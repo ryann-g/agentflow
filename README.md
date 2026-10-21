@@ -106,7 +106,7 @@ For new developers, start with [**Onboarding**](./docs/getting-started/onboardin
 
 Have a question, found a bug, or want to request a feature?
 
-- **Email:** ryan.gabrielle01@gmail.com
+- **Email:** support@agent-flow.app
 - **Issues:** [GitHub Issues](https://github.com/dream-creator/agentflow/issues)
 
 ---
@@ -169,7 +169,7 @@ If you are interested in using AgentFlow in a commercial context, self-hosting i
 
 Contact us to discuss terms:
 
-- **Email:** [ryan.gabrielle01@gmail.com](mailto:ryan.gabrielle01@gmail.com)
+- **Email:** [support@agent-flow.app](mailto:support@agent-flow.app)
 - **Subject line:** Commercial License Inquiry — AgentFlow
 
 We typically respond within 1–2 business days.
