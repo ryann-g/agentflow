@@ -99,6 +99,10 @@ vercel-env-*.env
 .agents/
 skills-lock.json
 
+# /brag launch-video output (rendered mp4, poster, composition, share copy)
+brag-output/
+brag-output-*/
+
 # RLS pentest skill context files (contain audit findings, not app code)
 .sb-pentest-context.json
 .sb-pentest-audit.log
