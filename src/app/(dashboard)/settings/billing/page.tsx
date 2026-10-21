@@ -23,7 +23,7 @@ function BillingContent() {
   const [pmAuthUrl, setPmAuthUrl] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [actionSuccess, setSuccess] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
@@ -57,14 +57,16 @@ function BillingContent() {
     fetchProfile();
   }, [supabase]);
 
-  useEffect(() => {
-    if (upgraded) {
-      setSuccess("Your account has been upgraded to Pro! You now have unlimited leads and pipelines.");
-    }
-    if (cancelled) {
-      setSuccess("Your subscription has been cancelled. You'll remain on Pro until the end of your billing period.");
-    }
-  }, [upgraded, cancelled]);
+  // The success message for ?upgraded=1 / ?cancelled=1 is derived during
+  // render rather than copied into state by an effect. Copying it into state
+  // meant an extra render pass and a setState-in-effect, for a value that
+  // was always a pure function of the query string.
+  const urlSuccess = upgraded
+    ? "Your account has been upgraded to Pro! You now have unlimited leads and pipelines."
+    : cancelled
+      ? "Your subscription has been cancelled. You'll remain on Pro until the end of your billing period."
+      : "";
+  const success = actionSuccess || urlSuccess;
 
   async function handleUpgrade(interval: "monthly" | "annual" = "monthly") {
     setLoading(true);

@@ -308,7 +308,6 @@ export function TurnstileWidget({
             // banner here would be misleading UX.
             if (hasSucceeded) {
               if (process.env.NODE_ENV !== "production") {
-                // eslint-disable-next-line no-console
                 console.debug(
                   "[Turnstile] post-verify error-callback (ignored):",
                   error,
