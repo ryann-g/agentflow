@@ -11,11 +11,12 @@ export default defineConfig({
       reporter: ["text", "json", "json-summary", "html"],
       include: ["src/lib/**/*.ts", "src/app/api/**/*.ts"],
       exclude: [
+        // Thin env-var wrappers around the Supabase clients. They need a
+        // live Supabase project to exercise, and their failure mode (missing
+        // env vars) is asserted in the docs rather than in a unit test.
         "src/lib/supabase/client.ts",
         "src/lib/supabase/server.ts",
         "src/lib/supabase/service.ts",
-        "src/app/api/export/route.ts",
-        "src/app/api/leads/import/route.ts",
         "src/app/api/health/route.ts",
       ],
       thresholds: {

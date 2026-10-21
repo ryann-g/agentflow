@@ -378,3 +378,159 @@ describe("/api/paymongo/webhook", () => {
     );
   });
 });
+
+// ── Branch coverage ─────────────────────────────────────────────
+// The cases above cover the happy paths. These cover the defensive
+// branches: malformed payloads, missing resources, and the two error
+// paths that decide what PayMongo hears back.
+
+describe("/api/paymongo/webhook — edge cases", () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    process.env.PAYMONGO_WEBHOOK_SECRET = "whsec_test";
+    mockVerifyWebhook.mockReturnValue(true);
+  });
+
+  /** One chain that answers insert, update and select. */
+  function buildEventChain(insertError: unknown = null) {
+    const chain: Record<string, unknown> = {};
+    chain.insert = vi.fn(() => ({ data: null, error: insertError }));
+    chain.update = vi.fn(() => chain);
+    chain.select = vi.fn(() => chain);
+    chain.eq = vi.fn(() => chain);
+    chain.single = vi.fn(() => Promise.resolve({ data: { status: "pending" }, error: null }));
+    return chain;
+  }
+
+  function request(body: string) {
+    return new NextRequest("http://localhost:3000/api/paymongo/webhook", {
+      method: "POST",
+      body,
+      headers: { "paymongo-signature": "valid_sig" } as unknown as HeadersInit,
+    });
+  }
+
+  function eventBody(type: string, data: unknown = { id: "sub_1", type: "subscription", attributes: {} }) {
+    return JSON.stringify({
+      id: "evt_1",
+      type: "event",
+      attributes: { type, data },
+    });
+  }
+
+  it("records an unknown event type when the payload has no attributes", async () => {
+    const chain = buildEventChain();
+    mockFrom.mockReturnValue(chain);
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request("{}"));
+
+    expect(res.status).toBe(200);
+    expect(chain.insert).toHaveBeenCalled();
+  });
+
+  it("returns 500 when the event cannot be recorded at all", async () => {
+    mockFrom.mockReturnValue(buildEventChain({ code: "42501", message: "denied" }));
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request("{}"));
+
+    expect(res.status).toBe(500);
+  });
+
+  it("acknowledges an event whose payload carries no resource", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request(eventBody("subscription.activated", null)));
+
+    expect(res.status).toBe(200);
+  });
+
+  it("ignores a known event type that has no subscription reference", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(
+      request(
+        JSON.stringify({
+          id: "evt_1",
+          type: "event",
+          attributes: { type: "subscription.activated", data: { id: "", type: "" } },
+        })
+      )
+    );
+
+    expect(res.status).toBe(200);
+  });
+
+  it("routes subscription.past_due to the payment-failed handler", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+    const { handlePaymentFailed } = await import("@/lib/paymongo");
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request(eventBody("subscription.past_due")));
+
+    expect(res.status).toBe(200);
+    expect(handlePaymentFailed).toHaveBeenCalledWith("sub_1");
+  });
+
+  it("routes subscription.invoice.payment_failed to the payment-failed handler", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+    const { handlePaymentFailed } = await import("@/lib/paymongo");
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request(eventBody("subscription.invoice.payment_failed")));
+
+    expect(res.status).toBe(200);
+    expect(handlePaymentFailed).toHaveBeenCalledWith("sub_1");
+  });
+
+  it("routes subscription.unpaid to the unpaid handler", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+    const { handleSubscriptionUnpaid } = await import("@/lib/paymongo");
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request(eventBody("subscription.unpaid")));
+
+    expect(res.status).toBe(200);
+    expect(handleSubscriptionUnpaid).toHaveBeenCalledWith("sub_1");
+  });
+
+  it("routes subscription.updated to the updated handler", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+    const { handleSubscriptionUpdated } = await import("@/lib/paymongo");
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(
+      request(eventBody("subscription.updated", { id: "sub_1", type: "subscription", attributes: { status: "active" } }))
+    );
+
+    expect(res.status).toBe(200);
+    expect(handleSubscriptionUpdated).toHaveBeenCalledWith("sub_1", { status: "active" });
+  });
+
+  it("routes subscription.invoice.paid to the paid handler", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+    const { handlePaymentPaid } = await import("@/lib/paymongo");
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request(eventBody("subscription.invoice.paid")));
+
+    expect(res.status).toBe(200);
+    expect(handlePaymentPaid).toHaveBeenCalledWith("sub_1");
+  });
+
+  it("returns the PayMongo error status when a handler fails with one", async () => {
+    mockFrom.mockReturnValue(buildEventChain());
+    const { PayMongoError, handleSubscriptionActivated } = await import("@/lib/paymongo");
+    (handleSubscriptionActivated as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new PayMongoError("subscription missing", "not_found", 404)
+    );
+
+    const { POST } = await import("@/app/api/paymongo/webhook/route");
+    const res = await POST(request(eventBody("subscription.activated")));
+
+    expect(res.status).toBe(404);
+  });
+});
