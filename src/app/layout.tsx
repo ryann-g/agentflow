@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import { ServiceWorkerRegistration } from "@/components/ui/sw-register";
+import { proPriceValue } from "@/lib/pricing";
 import { ConsentAwareAnalytics } from "@/components/consent-aware-analytics";
 import { CookieConsent } from "@/components/cookie-consent";
 import "./globals.css";
@@ -98,7 +99,7 @@ export default function RootLayout({
               offers: {
                 "@type": "AggregateOffer",
                 lowPrice: "0",
-                highPrice: "8",
+                highPrice: String(proPriceValue("monthly")),
                 priceCurrency: "USD",
                 offerCount: "2",
                 offers: [
@@ -111,13 +112,13 @@ export default function RootLayout({
                   },
                   {
                     "@type": "Offer",
-                    price: "8",
+                    price: String(proPriceValue("monthly")),
                     priceCurrency: "USD",
                     name: "Pro",
                     description: "Unlimited leads, unlimited pipelines, priority support",
                     priceSpecification: {
                       "@type": "UnitPriceSpecification",
-                      price: "8",
+                      price: String(proPriceValue("monthly")),
                       priceCurrency: "USD",
                       billingDuration: "P1M",
                     },

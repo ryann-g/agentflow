@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { fetchProfile } from "@/hooks/useProfile";
+import { proPriceLabel } from "@/lib/pricing";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -105,7 +106,7 @@ export default function SettingsPage() {
             {profile?.plan === "free" && (
               <div className="pt-2">
                 <Button className="w-full" onClick={() => router.push("/settings/billing")}>
-                  Upgrade to Pro — $8/mo
+                  Upgrade to Pro — {proPriceLabel("monthly")}
                 </Button>
                 <p className="text-xs text-surface-500 text-center mt-2">
                   Unlimited leads, unlimited pipelines, custom branding

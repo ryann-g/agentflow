@@ -9,6 +9,8 @@ export interface PricingPlan {
   highlighted: boolean;
 }
 
+import { proPriceValue } from "@/lib/pricing";
+
 export const pricingPlans: PricingPlan[] = [
   {
     name: "Free",
@@ -27,8 +29,8 @@ export const pricingPlans: PricingPlan[] = [
   },
   {
     name: "Pro",
-    monthlyPrice: 8,
-    annualPrice: 80,
+    monthlyPrice: proPriceValue("monthly"),
+    annualPrice: proPriceValue("annual"),
     description: "For serious solo agents",
     features: [
       "Unlimited leads",

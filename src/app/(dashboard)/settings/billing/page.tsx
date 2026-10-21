@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { proPriceLabel } from "@/lib/pricing";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -198,7 +199,7 @@ function BillingContent() {
                 {plan === "pro" ? "Pro" : "Free"} Plan
               </span>
               <Badge variant={plan === "pro" ? "primary" : "default"}>
-                {plan === "pro" ? "$8/mo" : "$0/mo"}
+                {plan === "pro" ? proPriceLabel("monthly") : "$0/mo"}
               </Badge>
             </div>
             {plan === "free" && (
@@ -235,7 +236,7 @@ function BillingContent() {
                       }`}
                     >
                       <div className="text-sm font-medium">Monthly</div>
-                      <div className="text-lg font-bold">$8/mo</div>
+                      <div className="text-lg font-bold">{proPriceLabel("monthly")}</div>
                     </button>
                     <button
                       type="button"
@@ -248,7 +249,7 @@ function BillingContent() {
                       }`}
                     >
                       <div className="text-sm font-medium">Annual</div>
-                      <div className="text-lg font-bold">$80/yr</div>
+                      <div className="text-lg font-bold">{proPriceLabel("annual")}</div>
                       <div className="text-xs text-success-600">2 months free</div>
                     </button>
                   </div>
@@ -260,7 +261,7 @@ function BillingContent() {
                   ) : (
                     <ExternalLink className="h-4 w-4 mr-2" />
                   )}
-                  Upgrade to Pro — $8/mo
+                  Upgrade to Pro — {proPriceLabel("monthly")}
                 </Button>
                 {error && (
                   <p className="text-sm text-destructive mt-2 text-center">{error}</p>
