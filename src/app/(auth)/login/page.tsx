@@ -100,13 +100,19 @@ function LoginContent() {
 
   const isLoading = loadingAction !== null;
 
-  // Read any ?error= param left behind by the OAuth callback route
-  useEffect(() => {
-    const errorParam = searchParams.get("error");
-    if (errorParam) {
-      setAuthError(humanizeAuthError(errorParam));
-    }
-  }, [searchParams]);
+  // Any ?error= param left behind by the OAuth callback route.
+  //
+  // This is adjusted during render rather than copied into state by an
+  // effect: the value is a pure function of the URL, and copying it into
+  // state inside an effect cost an extra render pass on every navigation.
+  // React's documented pattern for "adjust state when an input changes" is
+  // to compare against the previous value during render.
+  const errorParam = searchParams.get("error");
+  const [seenErrorParam, setSeenErrorParam] = useState<string | null>(null);
+  if (errorParam !== seenErrorParam) {
+    setSeenErrorParam(errorParam);
+    setAuthError(errorParam ? humanizeAuthError(errorParam) : "");
+  }
 
   // Redirect if already authenticated
   useEffect(() => {

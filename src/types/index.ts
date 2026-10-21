@@ -1,1 +1,1 @@
-export type { Database, Json } from "../../types/supabase";
+export type { Database } from "../../types/supabase";

@@ -56,9 +56,14 @@ export async function GET(request: Request) {
         }
         return NextResponse.redirect(`${origin}${redirectPath}`);
       }
-      console.error("[auth/callback] Exchange failed:", exchangeError.message, exchangeError);
+      // Log the message only. A Supabase error object can carry a response
+      // body, and the callback URL holds the auth code — neither belongs in a log.
+      console.error("[auth/callback] Exchange failed:", exchangeError.message);
     } catch (err) {
-      console.error("[auth/callback] Exception during exchange:", err);
+      console.error(
+        "[auth/callback] Exception during exchange:",
+        err instanceof Error ? err.message : "Unknown error"
+      );
     }
   } else {
     console.error("[auth/callback] No code parameter in callback URL");

@@ -12,7 +12,6 @@ const PROTECTED_PATHS = [
   "/follow-ups",
   "/settings",
   "/api/leads",
-  "/api/pipeline",
 ];
 
 function isProtectedPath(pathname: string): boolean {

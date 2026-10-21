@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { createServiceClient } from "@/lib/supabase/service";
+import { PRO_PRICE_AMOUNTS, PRO_PRICE_CURRENCY } from "@/lib/pricing";
 
 // ── Types ──────────────────────────────────────────────────────────────
 
@@ -90,16 +91,18 @@ interface SubscriptionAttributes {
 
 // ── Configuration ──────────────────────────────────────────────────────
 
-export const PAYMONGO_API_BASE = "https://api.paymongo.com/v1";
+const PAYMONGO_API_BASE = "https://api.paymongo.com/v1";
 
 /**
  * Currency + amounts are env-overridable because Subscriptions are a
  * PHP-first product (all PayMongo examples use PHP); USD card acceptance is
  * a separate account feature. Defaults preserve the $8/$80 USD pricing.
  */
-const PLAN_CURRENCY = process.env.PAYMONGO_CURRENCY || "usd";
-const MONTHLY_AMOUNT = Number(process.env.PAYMONGO_MONTHLY_AMOUNT) || 800;
-const ANNUAL_AMOUNT = Number(process.env.PAYMONGO_ANNUAL_AMOUNT) || 8000;
+const PLAN_CURRENCY = process.env.PAYMONGO_CURRENCY || PRO_PRICE_CURRENCY;
+const MONTHLY_AMOUNT =
+  Number(process.env.PAYMONGO_MONTHLY_AMOUNT) || PRO_PRICE_AMOUNTS.monthly;
+const ANNUAL_AMOUNT =
+  Number(process.env.PAYMONGO_ANNUAL_AMOUNT) || PRO_PRICE_AMOUNTS.annual;
 
 export const PAYMONGO_PLANS = {
   monthly: {
@@ -148,7 +151,7 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function payMongoFetch<T>(
+async function payMongoFetch<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
@@ -202,6 +205,13 @@ export async function payMongoFetch<T>(
           await sleep(delay);
           continue;
         }
+
+        // Out of retries. Without this, control falls through to the
+        // success return below and the ERROR BODY is handed back to the
+        // caller as if it were a valid response — so a subscription cancel
+        // would report success while the subscription stayed live, and
+        // callers reading `data.id` would get undefined.
+        throw lastError;
       }
 
       return (await response.json()) as T;
@@ -642,7 +652,7 @@ export async function retrievePayMongoSubscription(
 // which the webhook route guarantees by calling request.text() first.
 
 /** Replay window: deliveries older than this are rejected. */
-export const WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 300;
+const WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS = 300;
 
 interface PayMongoSignatureHeader {
   timestamp: number;
@@ -654,7 +664,7 @@ interface PayMongoSignatureHeader {
  * Parses the compound Paymongo-Signature header into its parts.
  * Returns null for malformed headers (missing/non-numeric timestamp).
  */
-export function parseWebhookSignatureHeader(
+function parseWebhookSignatureHeader(
   header: string
 ): PayMongoSignatureHeader | null {
   if (!header) return null;

@@ -1,14 +1,22 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { apiRateLimit } from "@/lib/rate-limiter";
-import { PLAN_LIMITS, type PlanType } from "@/lib/constants";
+import { getPlanLimits, resolvePlanType, type PlanType } from "@/lib/constants";
+import {
+  importLeadsSchema,
+  LEAD_FIELD_MAX_LENGTHS,
+  type ImportLeadRow,
+} from "@/lib/validations";
 import Papa from "papaparse";
 import {
   sanitizeCsvValue,
   isBinaryContent,
 } from "@/lib/csv-sanitize";
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_REQUEST_SIZE = 12 * 1024 * 1024; // 12MB — multipart framing overhead
+const MAX_LEADS_JSON_BYTES = 8 * 1024 * 1024; // 8MB for the pre-parsed channel
+const MAX_IMPORT_ROWS = 10_000;
 const BATCH_SIZE = 1000;
 
 /**
@@ -39,53 +47,86 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Reject an oversized body BEFORE reading it. `request.formData()` buffers
+  // the entire payload in memory, so a size check placed after the read
+  // cannot prevent the allocation it is meant to prevent.
+  const contentLength = Number(request.headers.get("content-length") ?? "0");
+  if (Number.isFinite(contentLength) && contentLength > MAX_REQUEST_SIZE) {
+    return NextResponse.json(
+      {
+        error: `Import is too large. Maximum request size is ${Math.floor(
+          MAX_REQUEST_SIZE / 1024 / 1024
+        )}MB.`,
+      },
+      { status: 413 }
+    );
+  }
+
   // --- Accept pre-parsed leads from client (after column mapping) ---
   const formData = await request.formData();
   const leadsJson = formData.get("leads") as string | null;
 
-  let leads: Array<{
-    full_name: string;
-    email: string | null;
-    phone: string | null;
-    source: string;
-  }>;
+  let leads: ImportLeadRow[];
 
   if (leadsJson) {
-    // Client already parsed CSV and mapped columns — validate server-side
+    // The pre-parsed channel has its own size cap: the multipart framing
+    // limit above does not bound a single large field.
+    if (leadsJson.length > MAX_LEADS_JSON_BYTES) {
+      return NextResponse.json(
+        {
+          error: `Import is too large. Maximum size is ${Math.floor(
+            MAX_LEADS_JSON_BYTES / 1024 / 1024
+          )}MB.`,
+        },
+        { status: 413 }
+      );
+    }
+
+    // Client already parsed CSV and mapped columns — validate server-side.
+    let parsed: unknown;
     try {
-      leads = JSON.parse(leadsJson);
+      parsed = JSON.parse(leadsJson);
     } catch {
       return NextResponse.json({ error: "Invalid leads data" }, { status: 400 });
     }
 
-    if (!Array.isArray(leads) || leads.length === 0) {
+    const result = importLeadsSchema.safeParse(parsed);
+    if (!result.success) {
       return NextResponse.json(
-        { error: "No leads to import" },
+        { error: "Invalid leads data", details: result.error.flatten().fieldErrors },
         { status: 400 }
       );
     }
 
-    if (leads.length > 10000) {
-      return NextResponse.json(
-        { error: "Maximum 10,000 rows per import" },
-        { status: 400 }
-      );
-    }
+    leads = result.data;
   } else {
     // Fallback: accept raw CSV file (for future API usage)
-    const file = formData.get("file") as File | null;
-    if (!file) {
+    const fileEntry = formData.get("file");
+
+    if (!fileEntry) {
       return NextResponse.json({ error: "No file or leads data provided" }, { status: 400 });
     }
 
-    if (file.size > MAX_FILE_SIZE) {
+    // `formData.get()` returns string | File. A client that sends a plain
+    // string in the "file" field would otherwise pass the size check
+    // (`undefined > MAX_FILE_SIZE` is false) and crash on `.text()`.
+    if (!(fileEntry instanceof File)) {
       return NextResponse.json(
-        { error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.` },
+        { error: "File must be uploaded as a file, not a text field" },
         { status: 400 }
       );
     }
 
-    const text = await file.text();
+    if (fileEntry.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        {
+          error: `File too large. Maximum size is ${MAX_FILE_SIZE / 1024 / 1024}MB.`,
+        },
+        { status: 413 }
+      );
+    }
+
+    const text = await fileEntry.text();
 
     // Binary content detection
     if (isBinaryContent(text)) {
@@ -114,6 +155,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (parsed.data.length > MAX_IMPORT_ROWS) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_IMPORT_ROWS.toLocaleString()} rows per import` },
+        { status: 400 }
+      );
+    }
+
     leads = parsed.data.map((row) => ({
       full_name: sanitizeCsvValue(Object.values(row)[0] || ""),
       email: null,
@@ -133,24 +181,37 @@ export async function POST(request: NextRequest) {
         errors.push(`Row ${index + 1}: empty name — skipped`);
         return null;
       }
-      if (name.length > 100) {
-        errors.push(`Row ${index + 1}: name exceeds 100 characters — skipped`);
+      if (name.length > LEAD_FIELD_MAX_LENGTHS.full_name) {
+        errors.push(
+          `Row ${index + 1}: name exceeds ${LEAD_FIELD_MAX_LENGTHS.full_name} characters — skipped`
+        );
         return null;
       }
       const email = lead.email ? lead.email.trim() : "";
       const phone = lead.phone ? lead.phone.trim() : "";
 
-      if (email.length > 255) {
-        errors.push(`Row ${index + 1}: email exceeds 255 characters — truncated`);
+      if (email.length > LEAD_FIELD_MAX_LENGTHS.email) {
+        errors.push(
+          `Row ${index + 1}: email exceeds ${LEAD_FIELD_MAX_LENGTHS.email} characters — truncated`
+        );
       }
-      if (phone.length > 20) {
-        errors.push(`Row ${index + 1}: phone exceeds 20 characters — truncated`);
+      if (phone.length > LEAD_FIELD_MAX_LENGTHS.phone) {
+        errors.push(
+          `Row ${index + 1}: phone exceeds ${LEAD_FIELD_MAX_LENGTHS.phone} characters — truncated`
+        );
       }
+      // Sanitize first, then cap to the same bounds leadSchema enforces. The
+      // sanitizer can prepend a quote, so capping afterwards is what keeps
+      // the stored value inside the schema's limit.
       return {
         user_id: user.id,
-        full_name: sanitizeCsvValue(name).slice(0, 101),
-        email: email ? sanitizeCsvValue(email).slice(0, 256) : null,
-        phone: phone ? sanitizeCsvValue(phone).slice(0, 21) : null,
+        full_name: sanitizeCsvValue(name).slice(0, LEAD_FIELD_MAX_LENGTHS.full_name),
+        email: email
+          ? sanitizeCsvValue(email).slice(0, LEAD_FIELD_MAX_LENGTHS.email)
+          : null,
+        phone: phone
+          ? sanitizeCsvValue(phone).slice(0, LEAD_FIELD_MAX_LENGTHS.phone)
+          : null,
         source: "csv_import",
         pipeline_stage: "new_lead",
       };
@@ -178,8 +239,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const plan: PlanType = (profile.plan as PlanType) || "free";
-  const limits = PLAN_LIMITS[plan];
+  const plan: PlanType = resolvePlanType(profile.plan);
+  const limits = getPlanLimits(plan);
 
   if (limits.maxActiveLeads !== Infinity) {
     const { count: activeLeadCount } = await supabase

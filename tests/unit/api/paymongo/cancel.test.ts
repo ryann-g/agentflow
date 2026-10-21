@@ -14,7 +14,6 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("@/lib/rate-limiter", () => ({
   apiRateLimit: vi.fn(() => Promise.resolve({ allowed: true, remaining: 9, limit: 10, reset: new Date() })),
-  resetRateLimiter: vi.fn(),
 }));
 
 vi.mock("@/lib/paymongo", () => ({

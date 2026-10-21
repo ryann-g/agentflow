@@ -98,6 +98,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      - name: Use the npm version pinned in package.json
+        run: |
+          # The lockfile is only installable by the npm that wrote it. npm 10 and
+          # npm 11 lay out the same dependency tree differently, so a lockfile
+          # written by one is rejected by the other with
+          # "EUSAGE ... Missing: <pkg> from lock file" -- a failure that reads
+          # like a network error rather than a version mismatch.
+          PINNED=$(node -p "require('./package.json').packageManager.replace('npm@','')")
+          if [ "$(npm --version)" != "$PINNED" ]; then
+            echo "Installing npm@$PINNED (runner ships $(npm --version))"
+            npm install -g "npm@$PINNED"
+          fi
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
@@ -303,11 +317,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           NEW_TAG="${{ steps.version.outputs.new_tag }}"
-          
+
+          # Keep package.json in step with the tag. The tag is the version of
+          # record, but package.json is what anyone reads first — leaving it
+          # untouched is how it drifted to 0.1.0 while the releases reached
+          # v0.41.4.
+          npm version "${NEW_TAG#v}" --no-git-tag-version --allow-same-version
+          git add package.json package-lock.json
+          git commit -m "chore(release): ${NEW_TAG}"
+          git push origin HEAD:main
+
           # Create the tag first
           git tag "${NEW_TAG}"
           git push origin "${NEW_TAG}"
-          
+
           # Then create the release
           gh release create "${NEW_TAG}" \
             --title "${NEW_TAG}" \

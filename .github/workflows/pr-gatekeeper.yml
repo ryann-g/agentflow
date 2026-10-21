@@ -27,6 +27,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      - name: Use the npm version pinned in package.json
+        run: |
+          # The lockfile is only installable by the npm that wrote it. npm 10 and
+          # npm 11 lay out the same dependency tree differently, so a lockfile
+          # written by one is rejected by the other with
+          # "EUSAGE ... Missing: <pkg> from lock file" -- a failure that reads
+          # like a network error rather than a version mismatch.
+          PINNED=$(node -p "require('./package.json').packageManager.replace('npm@','')")
+          if [ "$(npm --version)" != "$PINNED" ]; then
+            echo "Installing npm@$PINNED (runner ships $(npm --version))"
+            npm install -g "npm@$PINNED"
+          fi
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
@@ -59,6 +73,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      - name: Use the npm version pinned in package.json
+        run: |
+          # The lockfile is only installable by the npm that wrote it. npm 10 and
+          # npm 11 lay out the same dependency tree differently, so a lockfile
+          # written by one is rejected by the other with
+          # "EUSAGE ... Missing: <pkg> from lock file" -- a failure that reads
+          # like a network error rather than a version mismatch.
+          PINNED=$(node -p "require('./package.json').packageManager.replace('npm@','')")
+          if [ "$(npm --version)" != "$PINNED" ]; then
+            echo "Installing npm@$PINNED (runner ships $(npm --version))"
+            npm install -g "npm@$PINNED"
+          fi
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
@@ -84,6 +112,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Use the npm version pinned in package.json
+        run: |
+          # The lockfile is only installable by the npm that wrote it. npm 10 and
+          # npm 11 lay out the same dependency tree differently, so a lockfile
+          # written by one is rejected by the other with
+          # "EUSAGE ... Missing: <pkg> from lock file" -- a failure that reads
+          # like a network error rather than a version mismatch.
+          PINNED=$(node -p "require('./package.json').packageManager.replace('npm@','')")
+          if [ "$(npm --version)" != "$PINNED" ]; then
+            echo "Installing npm@$PINNED (runner ships $(npm --version))"
+            npm install -g "npm@$PINNED"
+          fi
+          npm --version
 
       - name: Install dependencies
         run: npm ci
@@ -112,6 +154,20 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Use the npm version pinned in package.json
+        run: |
+          # The lockfile is only installable by the npm that wrote it. npm 10 and
+          # npm 11 lay out the same dependency tree differently, so a lockfile
+          # written by one is rejected by the other with
+          # "EUSAGE ... Missing: <pkg> from lock file" -- a failure that reads
+          # like a network error rather than a version mismatch.
+          PINNED=$(node -p "require('./package.json').packageManager.replace('npm@','')")
+          if [ "$(npm --version)" != "$PINNED" ]; then
+            echo "Installing npm@$PINNED (runner ships $(npm --version))"
+            npm install -g "npm@$PINNED"
+          fi
+          npm --version
 
       - name: Install dependencies
         run: npm ci
@@ -185,6 +241,12 @@ jobs:
         run: npm install -g vercel@latest
 
       - name: Link to preview project
+        # A stale or revoked Supabase access token must not block the
+        # deploy. The migration step below connects with --db-url and uses
+        # the database password, not this token; this step only sets the
+        # CLI's project context. The token is set to expire, and when it
+        # does the deploy still needs to run.
+        continue-on-error: true
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_ID }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -221,14 +283,33 @@ jobs:
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Health check attempt $i of $MAX_RETRIES..."
 
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}/" 2>/dev/null || echo "000")
+            # Capture the status and the redirect target together.
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" "${URL}/" 2>/dev/null || echo "000 ")
+            HTTP_STATUS=$(echo "$RESPONSE" | cut -d' ' -f1)
+            REDIRECT=$(echo "$RESPONSE" | cut -d' ' -f2-)
 
             if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "401" ]; then
               echo "[OK] Deployment is live (HTTP ${HTTP_STATUS})"
               exit 0
             fi
 
-            echo "[WARN] Got HTTP ${HTTP_STATUS}, retrying in ${RETRY_DELAY}s..."
+            # Vercel Deployment Protection answers an unauthenticated
+            # request with a 302 to its SSO endpoint. That still proves the
+            # deployment is serving, so it counts as live -- but only for
+            # that specific target. Any other redirect means something else
+            # is wrong and must not be waved through.
+            case "$HTTP_STATUS" in
+              302|307)
+                case "$REDIRECT" in
+                  *vercel.com/sso-api*)
+                    echo "[OK] Deployment is live (HTTP ${HTTP_STATUS}, protected by Vercel Deployment Protection)"
+                    exit 0
+                    ;;
+                esac
+                ;;
+            esac
+
+            echo "[WARN] Got HTTP ${HTTP_STATUS}${REDIRECT:+ -> $REDIRECT}, retrying in ${RETRY_DELAY}s..."
             sleep $RETRY_DELAY
             RETRY_DELAY=$((RETRY_DELAY + 6))
           done

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { showToast } from "@/components/ui/toast";
+import { updateLead } from "@/hooks/useLeads";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import type { Database } from "@/types";
@@ -21,7 +22,7 @@ const SOURCES = [
   { value: "open_house", label: "Open House" },
   { value: "zillow", label: "Zillow" },
   { value: "other", label: "Other" },
-];
+] as const;
 
 const PIPELINE_STAGES = [
   { value: "new_lead", label: "New Lead" },
@@ -31,6 +32,9 @@ const PIPELINE_STAGES = [
   { value: "closed_won", label: "Closed Won" },
   { value: "closed_lost", label: "Closed Lost" },
 ] as const;
+
+type LeadSource = (typeof SOURCES)[number]["value"];
+type LeadStage = (typeof PIPELINE_STAGES)[number]["value"];
 
 export default function EditLeadPage() {
   const params = useParams();
@@ -98,24 +102,21 @@ export default function EditLeadPage() {
       return;
     }
 
-    const { error: updateError } = await supabase
-      .from("leads")
-      .update({
-        full_name: fullName,
-        email: email || null,
-        phone: phone || null,
-        source: source as Lead["source"],
-        pipeline_stage: pipelineStage as Lead["pipeline_stage"],
-        next_action: nextAction || null,
-        next_action_date: nextActionDate || null,
-        notes: notes || null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", params.id as string)
-      .eq("user_id", user.id);
+    // Writes go through PUT /api/leads/[id] so the route's Zod validation,
+    // rate limit and ownership scoping apply.
+    const { error: updateError } = await updateLead(params.id as string, {
+      full_name: fullName,
+      email: email || null,
+      phone: phone || null,
+      source: source as LeadSource,
+      pipeline_stage: pipelineStage as LeadStage,
+      next_action: nextAction || null,
+      next_action_date: nextActionDate || null,
+      notes: notes || null,
+    });
 
     if (updateError) {
-      setError(updateError.message);
+      setError(updateError);
       setSaving(false);
       return;
     }

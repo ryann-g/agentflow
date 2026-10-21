@@ -61,3 +61,71 @@ describe("apiRateLimit middleware", () => {
     expect(typeof apiRateLimit).toBe("function");
   });
 });
+
+describe("rateLimiter — store eviction", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps the store bounded when many distinct keys are used", async () => {
+    const { rateLimiter } = await import("@/lib/rate-limiter");
+
+    // More keys than the eviction budget (10,000). Each key is unique, so
+    // nothing is ever revisited and the store would grow without bound.
+    for (let i = 0; i < 10_050; i++) {
+      await rateLimiter(`key-${i}`, { limit: 5, window: 60 });
+    }
+
+    // The limiter still works after the sweep.
+    const result = await rateLimiter("key-after-eviction", { limit: 5, window: 60 });
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(4);
+  });
+
+  it("drops expired entries before it drops live ones", async () => {
+    const { rateLimiter } = await import("@/lib/rate-limiter");
+
+    // A long-lived key that must survive the sweep.
+    await rateLimiter("live-key", { limit: 3, window: 600 });
+
+    // Short-lived keys. Kept under the eviction budget so no sweep runs yet.
+    for (let i = 0; i < 9_000; i++) {
+      await rateLimiter(`short-${i}`, { limit: 5, window: 1 });
+    }
+
+    // Let the short-lived keys expire. "live-key" is unaffected.
+    vi.advanceTimersByTime(2_000);
+
+    const deleteSpy = vi.spyOn(Map.prototype, "delete");
+
+    // Cross the eviction budget. The sweep should now find 9,000 expired
+    // entries to drop, so it never needs to fall back to removing the
+    // oldest (still-live) entries.
+    for (let i = 0; i < 1_100; i++) {
+      await rateLimiter(`recent-${i}`, { limit: 5, window: 600 });
+    }
+
+    const deleted = deleteSpy.mock.calls.map((call) => call[0] as string);
+    deleteSpy.mockRestore();
+
+    expect(deleted).toContain("short-0");
+    expect(deleted).not.toContain("live-key");
+  });
+
+  it("starts a fresh window for a key whose entry was evicted", async () => {
+    const { rateLimiter } = await import("@/lib/rate-limiter");
+
+    await rateLimiter("short-lived", { limit: 2, window: 1 });
+    await rateLimiter("short-lived", { limit: 2, window: 1 });
+
+    vi.advanceTimersByTime(2_000);
+
+    const result = await rateLimiter("short-lived", { limit: 2, window: 1 });
+    expect(result.allowed).toBe(true);
+    expect(result.remaining).toBe(1);
+  });
+});

@@ -3,6 +3,8 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isPayMongoCheckoutUrl } from "@/lib/checkout-url";
+import { proPriceLabel } from "@/lib/pricing";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +23,7 @@ function BillingContent() {
   const [pmAuthUrl, setPmAuthUrl] = useState<string | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [actionSuccess, setSuccess] = useState("");
   const supabase = createClient();
 
   useEffect(() => {
@@ -55,14 +57,16 @@ function BillingContent() {
     fetchProfile();
   }, [supabase]);
 
-  useEffect(() => {
-    if (upgraded) {
-      setSuccess("Your account has been upgraded to Pro! You now have unlimited leads and pipelines.");
-    }
-    if (cancelled) {
-      setSuccess("Your subscription has been cancelled. You'll remain on Pro until the end of your billing period.");
-    }
-  }, [upgraded, cancelled]);
+  // The success message for ?upgraded=1 / ?cancelled=1 is derived during
+  // render rather than copied into state by an effect. Copying it into state
+  // meant an extra render pass and a setState-in-effect, for a value that
+  // was always a pure function of the query string.
+  const urlSuccess = upgraded
+    ? "Your account has been upgraded to Pro! You now have unlimited leads and pipelines."
+    : cancelled
+      ? "Your subscription has been cancelled. You'll remain on Pro until the end of your billing period."
+      : "";
+  const success = actionSuccess || urlSuccess;
 
   async function handleUpgrade(interval: "monthly" | "annual" = "monthly") {
     setLoading(true);
@@ -75,6 +79,14 @@ function BillingContent() {
       });
       const data = await res.json();
       if (data.url) {
+        // Only follow a checkout URL that points at PayMongo. The URL comes
+        // from the server, but a navigation to an arbitrary host is an
+        // open redirect the moment any response is tampered with.
+        if (!isPayMongoCheckoutUrl(data.url)) {
+          setError("Received an invalid checkout URL. Please try again.");
+          setLoading(false);
+          return;
+        }
         window.location.href = data.url;
       } else if (data.subscriptionId) {
         // Already active (card vaulted), no redirect needed
@@ -161,7 +173,7 @@ function BillingContent() {
             <p className="text-xs text-warning-600 mt-1">
               Your payment failed. PayMongo will retry up to 3 times — act now to keep Pro.
             </p>
-            {pmAuthUrl ? (
+            {pmAuthUrl && isPayMongoCheckoutUrl(pmAuthUrl) ? (
               <a
                 href={pmAuthUrl}
                 className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-primary hover:underline"
@@ -198,7 +210,7 @@ function BillingContent() {
                 {plan === "pro" ? "Pro" : "Free"} Plan
               </span>
               <Badge variant={plan === "pro" ? "primary" : "default"}>
-                {plan === "pro" ? "$8/mo" : "$0/mo"}
+                {plan === "pro" ? proPriceLabel("monthly") : "$0/mo"}
               </Badge>
             </div>
             {plan === "free" && (
@@ -235,7 +247,7 @@ function BillingContent() {
                       }`}
                     >
                       <div className="text-sm font-medium">Monthly</div>
-                      <div className="text-lg font-bold">$8/mo</div>
+                      <div className="text-lg font-bold">{proPriceLabel("monthly")}</div>
                     </button>
                     <button
                       type="button"
@@ -248,7 +260,7 @@ function BillingContent() {
                       }`}
                     >
                       <div className="text-sm font-medium">Annual</div>
-                      <div className="text-lg font-bold">$80/yr</div>
+                      <div className="text-lg font-bold">{proPriceLabel("annual")}</div>
                       <div className="text-xs text-success-600">2 months free</div>
                     </button>
                   </div>
@@ -260,7 +272,7 @@ function BillingContent() {
                   ) : (
                     <ExternalLink className="h-4 w-4 mr-2" />
                   )}
-                  Upgrade to Pro — $8/mo
+                  Upgrade to Pro — {proPriceLabel("monthly")}
                 </Button>
                 {error && (
                   <p className="text-sm text-destructive mt-2 text-center">{error}</p>

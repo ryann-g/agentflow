@@ -7,7 +7,7 @@ const CONSENT_KEY = "agentflow_cookie_consent";
 
 type ConsentState = "accepted" | "declined" | null;
 
-export function getStoredConsent(): ConsentState {
+function getStoredConsent(): ConsentState {
   if (typeof window === "undefined") return null;
   const stored = localStorage.getItem(CONSENT_KEY);
   if (stored === "accepted" || stored === "declined") return stored;
