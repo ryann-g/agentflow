@@ -29,6 +29,12 @@ jobs:
           version: latest
 
       - name: Link to staging project
+        # A stale or revoked Supabase access token must not block the
+        # deploy. The migration step below connects with --db-url and uses
+        # the database password, not this token; this step only sets the
+        # CLI's project context. The token is set to expire, and when it
+        # does the deploy still needs to run.
+        continue-on-error: true
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_ID }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -65,6 +71,12 @@ jobs:
           version: latest
 
       - name: Link to staging project
+        # A stale or revoked Supabase access token must not block the
+        # deploy. The migration step below connects with --db-url and uses
+        # the database password, not this token; this step only sets the
+        # CLI's project context. The token is set to expire, and when it
+        # does the deploy still needs to run.
+        continue-on-error: true
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_ID }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
@@ -117,6 +129,12 @@ jobs:
           version: latest
 
       - name: Link to staging project
+        # A stale or revoked Supabase access token must not block the
+        # deploy. The migration step below connects with --db-url and uses
+        # the database password, not this token; this step only sets the
+        # CLI's project context. The token is set to expire, and when it
+        # does the deploy still needs to run.
+        continue-on-error: true
         run: supabase link --project-ref ${{ env.SUPABASE_PROJECT_ID }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
