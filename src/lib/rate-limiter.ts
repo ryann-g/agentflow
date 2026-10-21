@@ -24,6 +24,35 @@ interface RateLimitResult {
 
 const store = new Map<string, { count: number; resetTime: number }>();
 
+/**
+ * Upper bound on how many keys we keep alive.
+ *
+ * Without it the Map only ever grows: a key is reset when it is touched
+ * again, so keys that are never revisited — every rate-limit key includes a
+ * user id, so a busy deployment accumulates one per visitor — stay in memory
+ * for the lifetime of the instance.
+ */
+const MAX_TRACKED_KEYS = 10_000;
+
+/**
+ * Drops expired entries, then the oldest ones if the budget is still
+ * exceeded. Map iteration is insertion-ordered, so the first keys are the
+ * oldest.
+ */
+function evictIfNeeded(now: number): void {
+  if (store.size <= MAX_TRACKED_KEYS) return;
+
+  for (const [key, entry] of store) {
+    if (now > entry.resetTime) store.delete(key);
+  }
+
+  while (store.size > MAX_TRACKED_KEYS) {
+    const oldest = store.keys().next();
+    if (oldest.done) break;
+    store.delete(oldest.value);
+  }
+}
+
 export async function rateLimiter(
   key: string,
   config: RateLimitConfig
@@ -31,6 +60,8 @@ export async function rateLimiter(
   const now = Date.now();
   const windowMs = config.window * 1000;
   const resetTime = now + windowMs;
+
+  evictIfNeeded(now);
 
   const existing = store.get(key);
 
@@ -64,12 +95,4 @@ export async function rateLimiter(
 
 export function apiRateLimit(key: string, limit = 100, window = 60) {
   return rateLimiter(key, { limit, window });
-}
-
-export function resetRateLimiter(key?: string) {
-  if (key) {
-    store.delete(key);
-  } else {
-    store.clear();
-  }
 }

@@ -30,7 +30,7 @@ export function getStageVariant(
  * Pipeline depth order. `closed_lost` is terminal-negative: it does not
  * advance the pipeline, so its order stays at 0 for scoring purposes.
  */
-export const STAGE_ORDER: Record<string, number> = {
+const STAGE_ORDER: Record<string, number> = {
   new_lead: 0,
   contacted: 1,
   showing: 2,
@@ -44,7 +44,7 @@ const WARM_STAGE_THRESHOLD = 1; // contacted or later
 const HOT_RECENCY_DAYS = 3;
 const WARM_RECENCY_DAYS = 7;
 
-export interface LeadScoreInput {
+interface LeadScoreInput {
   pipeline_stage: string;
   updated_at?: string | null;
 }

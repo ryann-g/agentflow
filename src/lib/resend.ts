@@ -117,4 +117,3 @@ export async function sendWelcomeEmail(
   }
 }
 
-export { getResendClient as resend };

@@ -19,17 +19,23 @@
  *   3. To turn it off: set NEXT_PUBLIC_FEATURE_YOUR_FLAG=false in Vercel.
  */
 
-export interface FeatureFlag {
+interface FeatureFlag {
   /** Human-readable label for internal docs. Not shown to users. */
   label: string;
   /** Code default. `true` = enabled unless explicitly killed. */
   default: boolean;
 }
 
+/**
+ * Every flag here must be consumed by a code path.
+ *
+ * `pipeline` and `bulk_actions` were registered for months but never
+ * consulted by anything — a flag that gates nothing is dead configuration
+ * that reads like a live switch. Add the flag AND the `isFeatureEnabled`
+ * call in the same change.
+ */
 export const FEATURE_FLAGS = {
   csv_import: { label: "CSV Lead Import", default: true },
-  pipeline: { label: "Pipeline View", default: true },
-  bulk_actions: { label: "Bulk Actions on Leads", default: true },
 } as const satisfies Record<string, FeatureFlag>;
 
 export type FeatureFlagKey = keyof typeof FEATURE_FLAGS;

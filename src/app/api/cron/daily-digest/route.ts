@@ -26,7 +26,8 @@ export async function GET(request: NextRequest) {
     .not("next_action", "is", null);
 
   if (error || !leads) {
-    console.error("Daily digest query error:", error?.message, error?.code, error?.details);
+    // error.details describes the database schema — do not log it.
+    console.error("Daily digest query error:", error?.message, error?.code);
     return NextResponse.json({ error: "Failed to fetch leads for digest" }, { status: 500 });
   }
 

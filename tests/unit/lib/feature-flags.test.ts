@@ -25,32 +25,25 @@ describe("feature-flags", () => {
     it("returns the code default (true) when no env override is set", async () => {
       const { isFeatureEnabled } = await import("@/lib/feature-flags");
       expect(isFeatureEnabled("csv_import")).toBe(true);
-      expect(isFeatureEnabled("pipeline")).toBe(true);
-      expect(isFeatureEnabled("bulk_actions")).toBe(true);
     });
 
     it("returns the code default (false) when a flag is explicitly off in code", async () => {
-      process.env.NEXT_PUBLIC_FEATURE_BULK_ACTIONS = "false";
+      process.env.NEXT_PUBLIC_FEATURE_CSV_IMPORT = "false";
       const { isFeatureEnabled } = await import("@/lib/feature-flags");
-      expect(isFeatureEnabled("bulk_actions")).toBe(false);
+      expect(isFeatureEnabled("csv_import")).toBe(false);
     });
 
     it("treats any non-'false' env value as the code default (fail-open)", async () => {
-      process.env.NEXT_PUBLIC_FEATURE_PIPELINE = "true";
       process.env.NEXT_PUBLIC_FEATURE_CSV_IMPORT = "1";
       const { isFeatureEnabled } = await import("@/lib/feature-flags");
-      expect(isFeatureEnabled("pipeline")).toBe(true);
       expect(isFeatureEnabled("csv_import")).toBe(true);
     });
 
     it("only the literal string 'false' kills a feature", async () => {
-      process.env.NEXT_PUBLIC_FEATURE_PIPELINE = "FALSE";
-      process.env.NEXT_PUBLIC_FEATURE_PIPELINE = "False";
-      process.env.NEXT_PUBLIC_FEATURE_PIPELINE = "no";
-      process.env.NEXT_PUBLIC_FEATURE_PIPELINE = "0";
+      process.env.NEXT_PUBLIC_FEATURE_CSV_IMPORT = "FALSE";
       const { isFeatureEnabled } = await import("@/lib/feature-flags");
       // All of the above should NOT kill the flag (fail-open for safety)
-      expect(isFeatureEnabled("pipeline")).toBe(true);
+      expect(isFeatureEnabled("csv_import")).toBe(true);
     });
   });
 
@@ -83,8 +76,14 @@ describe("feature-flags", () => {
     it("exposes a human-readable label for each flag", async () => {
       const { FEATURE_FLAGS } = await import("@/lib/feature-flags");
       expect(FEATURE_FLAGS.csv_import.label).toBeTruthy();
-      expect(FEATURE_FLAGS.pipeline.label).toBeTruthy();
-      expect(FEATURE_FLAGS.bulk_actions.label).toBeTruthy();
+    });
+
+    it("registers no flag that nothing consumes", async () => {
+      // A flag that gates nothing is dead configuration that reads like a
+      // live switch. `pipeline` and `bulk_actions` were removed for exactly
+      // this reason (Oct 21 2026 audit).
+      const { FEATURE_FLAGS } = await import("@/lib/feature-flags");
+      expect(Object.keys(FEATURE_FLAGS)).toEqual(["csv_import"]);
     });
 
     it("every flag has a default boolean", async () => {

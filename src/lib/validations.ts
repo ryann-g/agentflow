@@ -30,16 +30,21 @@ export const leadSchema = z.object({
 
 export const leadUpdateSchema = leadSchema.partial();
 
+/**
+ * The `actions` table records a lead's follow-up history.
+ *
+ * Note: nothing writes to the table today — the follow-up flow marks work
+ * complete on the lead itself (`leads.next_action`). The table is read by
+ * the lead detail page and by the data export, so it is always empty.
+ * Wiring a write path (or dropping the column family) is a product call,
+ * not a cleanup one.
+ */
 export const actionSchema = z.object({
   lead_id: z.string().uuid("Invalid lead ID"),
   action_type: z.enum(["call", "text", "email", "meeting", "showing", "note"]),
   description: z.string().max(500).optional().nullable(),
   due_date: z.string().min(1, "Due date is required"),
   completed: z.boolean().default(false),
-});
-
-export const actionUpdateSchema = actionSchema.partial().extend({
-  id: z.string().uuid("Invalid action ID"),
 });
 
 export const checkoutBodySchema = z.object({
@@ -67,9 +72,4 @@ export const importLeadRowSchema = z.object({
 
 export const importLeadsSchema = z.array(importLeadRowSchema).max(10_000);
 
-export type CheckoutBodyInput = z.infer<typeof checkoutBodySchema>;
-export type LeadInput = z.infer<typeof leadSchema>;
-export type LeadUpdateInput = z.infer<typeof leadUpdateSchema>;
-export type ActionInput = z.infer<typeof actionSchema>;
-export type ActionUpdateInput = z.infer<typeof actionUpdateSchema>;
 export type ImportLeadRow = z.infer<typeof importLeadRowSchema>;
