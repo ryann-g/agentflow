@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isPayMongoCheckoutUrl } from "@/lib/checkout-url";
 import { proPriceLabel } from "@/lib/pricing";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,14 @@ function BillingContent() {
       });
       const data = await res.json();
       if (data.url) {
+        // Only follow a checkout URL that points at PayMongo. The URL comes
+        // from the server, but a navigation to an arbitrary host is an
+        // open redirect the moment any response is tampered with.
+        if (!isPayMongoCheckoutUrl(data.url)) {
+          setError("Received an invalid checkout URL. Please try again.");
+          setLoading(false);
+          return;
+        }
         window.location.href = data.url;
       } else if (data.subscriptionId) {
         // Already active (card vaulted), no redirect needed
@@ -162,7 +171,7 @@ function BillingContent() {
             <p className="text-xs text-warning-600 mt-1">
               Your payment failed. PayMongo will retry up to 3 times — act now to keep Pro.
             </p>
-            {pmAuthUrl ? (
+            {pmAuthUrl && isPayMongoCheckoutUrl(pmAuthUrl) ? (
               <a
                 href={pmAuthUrl}
                 className="inline-flex items-center gap-1 mt-2 text-sm font-medium text-primary hover:underline"
