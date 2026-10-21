@@ -98,6 +98,20 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      - name: Use the npm version pinned in package.json
+        run: |
+          # The lockfile is only installable by the npm that wrote it. npm 10 and
+          # npm 11 lay out the same dependency tree differently, so a lockfile
+          # written by one is rejected by the other with
+          # "EUSAGE ... Missing: <pkg> from lock file" -- a failure that reads
+          # like a network error rather than a version mismatch.
+          PINNED=$(node -p "require('./package.json').packageManager.replace('npm@','')")
+          if [ "$(npm --version)" != "$PINNED" ]; then
+            echo "Installing npm@$PINNED (runner ships $(npm --version))"
+            npm install -g "npm@$PINNED"
+          fi
+          npm --version
+
       - name: Install dependencies
         run: npm ci
 
