@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
-import { PLAN_LIMITS, type PlanType } from "@/lib/constants";
+import { getPlanLimits, resolvePlanType, type PlanType } from "@/lib/constants";
 
 interface PlanLimitResult {
   allowed: boolean;
@@ -30,8 +30,8 @@ export async function checkPlanLimit(): Promise<PlanLimitResult> {
     return { allowed: false, plan: "free", currentCount: 0, maxAllowed: 0, error: "Could not verify your plan. Please refresh and try again." };
   }
 
-  const plan: PlanType = (profile.plan as PlanType) || "free";
-  const limits = PLAN_LIMITS[plan];
+  const plan: PlanType = resolvePlanType(profile.plan);
+  const limits = getPlanLimits(plan);
 
   const { count } = await supabase
     .from("leads")

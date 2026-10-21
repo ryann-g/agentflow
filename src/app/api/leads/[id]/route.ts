@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { leadUpdateSchema } from "@/lib/validations";
 import { apiRateLimit } from "@/lib/rate-limiter";
-import { PLAN_LIMITS, type PlanType } from "@/lib/constants";
+import { getPlanLimits, resolvePlanType, type PlanType } from "@/lib/constants";
 
 export async function GET(
   request: NextRequest,
@@ -93,8 +93,8 @@ export async function PUT(
         .eq("id", user.id)
         .single();
 
-      const plan: PlanType = (profile?.plan as PlanType) || "free";
-      const limits = PLAN_LIMITS[plan];
+      const plan: PlanType = resolvePlanType(profile?.plan);
+      const limits = getPlanLimits(plan);
 
       const { count: activeLeadCount } = await supabase
         .from("leads")

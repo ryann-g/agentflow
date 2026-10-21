@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { leadSchema } from "@/lib/validations";
 import { apiRateLimit } from "@/lib/rate-limiter";
-import { PLAN_LIMITS, type PlanType } from "@/lib/constants";
+import { getPlanLimits, resolvePlanType, type PlanType } from "@/lib/constants";
 
 const PAGE_SIZE = 1000; // Supabase PostgREST default max_rows cap
 
@@ -114,8 +114,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const plan: PlanType = (profile.plan as PlanType) || "free";
-  const limits = PLAN_LIMITS[plan];
+  const plan: PlanType = resolvePlanType(profile.plan);
+  const limits = getPlanLimits(plan);
 
   const { count: activeLeadCount } = await supabase
     .from("leads")
