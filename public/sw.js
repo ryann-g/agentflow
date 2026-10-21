@@ -1,18 +1,39 @@
-const CACHE_NAME = "agentflow-v1";
+// Cache version. Bump this whenever the caching rules change so the activate
+// handler deletes the previous cache. v2 dropped the authenticated routes:
+// v1 cached /leads, /dashboard and friends, which left real client names,
+// email addresses and phone numbers sitting in a shared Cache Storage bucket.
+const CACHE_NAME = "agentflow-v2";
+
 const APP_SHELL = [
   "/",
   "/login",
   "/signup",
-  "/dashboard",
-  "/pipeline",
-  "/leads",
-  "/leads/new",
-  "/follow-ups",
-  "/settings",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
 ];
+
+/**
+ * Routes that render the signed-in user's own data.
+ *
+ * These are never cached. Cache Storage is one shared bucket keyed by URL,
+ * with no per-user partitioning: a cached /leads would be served to whoever
+ * next opens that page on the device — including the same user after signing
+ * out, and including a second account on a shared browser profile.
+ */
+const PROTECTED_PREFIXES = [
+  "/dashboard",
+  "/leads",
+  "/pipeline",
+  "/follow-ups",
+  "/settings",
+];
+
+function isProtectedPath(pathname) {
+  return PROTECTED_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
 
 // Install — cache core app shell
 self.addEventListener("install", (event) => {
@@ -53,23 +74,31 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const isProtected = isProtectedPath(requestUrl.pathname);
+
   // Navigation requests: network first, fallback to cached shell
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          // Authenticated pages are never written to the cache.
+          if (!isProtected) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          }
           return response;
         })
         .catch(() => {
-          return caches.match(request).then((cached) => {
-            return cached || caches.match("/");
-          });
+          // Offline: fall back to the cached public shell.
+          return caches.match("/");
         })
     );
     return;
   }
+
+  // Authenticated non-navigation requests (fetch/XHR to a protected route)
+  // are not intercepted at all — they must never be cached.
+  if (isProtected) return;
 
   // Static assets: cache first, fallback to network
   event.respondWith(

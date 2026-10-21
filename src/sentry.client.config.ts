@@ -116,8 +116,41 @@ Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   enabled: process.env.NODE_ENV === "production",
   tracesSampleRate: 0.1,
-  replaysSessionSampleRate: 0,
-  replaysOnErrorSampleRate: 1.0,
+  // Session Replay is deliberately NOT enabled.
+  //
+  // This file used to set `replaysSessionSampleRate: 0` and
+  // `replaysOnErrorSampleRate: 1.0`, which reads as "replay every session
+  // that hits an error". No replay integration was ever registered —
+  // @sentry/nextjs v10 does not add one by default — so those options did
+  // nothing at all.
+  //
+  // What they did do was misrepresent the setup. The `beforeSend` hook below
+  // scrubs emails, phone numbers and UUIDs, but Sentry does NOT call
+  // `beforeSend` for replay events — replays need their own hook or the
+  // integration's masking options. So the day someone registered the
+  // integration, an unmasked DOM capture of authenticated pages would have
+  // started shipping real client names, email addresses and phone numbers to
+  // Sentry, past a scrubber that never applies to them.
+  //
+  // If you want replay, register the integration with masking on and keep it
+  // that way. `maskAllText` is the load-bearing option: it replaces all
+  // rendered text with a placeholder. `maskAllInputs` masks input values,
+  // `blockAllMedia` blocks images/audio/video, and `networkCaptureBodies`
+  // stays false so request payloads are never attached.
+  //
+  //   integrations: [
+  //     replayIntegration({
+  //       maskAllText: true,
+  //       maskAllInputs: true,
+  //       blockAllMedia: true,
+  //       networkCaptureBodies: false,
+  //     }),
+  //   ],
+  //   replaysSessionSampleRate: 0,
+  //   replaysOnErrorSampleRate: 1.0,
+  //
+  // Until then, leave the sample rates unset: an inert option that claims a
+  // capability is worse than no option at all.
   beforeSend(event) {
     try {
       scrubRequest(event);
