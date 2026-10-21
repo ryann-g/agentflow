@@ -283,14 +283,33 @@ jobs:
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Health check attempt $i of $MAX_RETRIES..."
 
-            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${URL}/" 2>/dev/null || echo "000")
+            # Capture the status and the redirect target together.
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code} %{redirect_url}" "${URL}/" 2>/dev/null || echo "000 ")
+            HTTP_STATUS=$(echo "$RESPONSE" | cut -d' ' -f1)
+            REDIRECT=$(echo "$RESPONSE" | cut -d' ' -f2-)
 
             if [ "$HTTP_STATUS" = "200" ] || [ "$HTTP_STATUS" = "401" ]; then
               echo "[OK] Deployment is live (HTTP ${HTTP_STATUS})"
               exit 0
             fi
 
-            echo "[WARN] Got HTTP ${HTTP_STATUS}, retrying in ${RETRY_DELAY}s..."
+            # Vercel Deployment Protection answers an unauthenticated
+            # request with a 302 to its SSO endpoint. That still proves the
+            # deployment is serving, so it counts as live -- but only for
+            # that specific target. Any other redirect means something else
+            # is wrong and must not be waved through.
+            case "$HTTP_STATUS" in
+              302|307)
+                case "$REDIRECT" in
+                  *vercel.com/sso-api*)
+                    echo "[OK] Deployment is live (HTTP ${HTTP_STATUS}, protected by Vercel Deployment Protection)"
+                    exit 0
+                    ;;
+                esac
+                ;;
+            esac
+
+            echo "[WARN] Got HTTP ${HTTP_STATUS}${REDIRECT:+ -> $REDIRECT}, retrying in ${RETRY_DELAY}s..."
             sleep $RETRY_DELAY
             RETRY_DELAY=$((RETRY_DELAY + 6))
           done
